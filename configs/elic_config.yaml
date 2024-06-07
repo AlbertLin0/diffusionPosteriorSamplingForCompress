@@ -1,0 +1,19 @@
+conditioning:
+  method: ps
+  params:
+    scale: 0.8
+
+data:
+  name: ffhq
+  root: ./data/foreman_cif/
+
+measurement:
+  operator:
+    name: DCVC
+    q: 2
+
+  noise: 
+    name: gaussian
+    sigma: 0.05
+
+save_path: ./elic_DCVC_result.json
