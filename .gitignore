@@ -1,0 +1,7 @@
+/results/
+/result_DCVC/
+/venv/
+!/data/*.py
+/data/
+/model/*.tar
+/model/*.pth
