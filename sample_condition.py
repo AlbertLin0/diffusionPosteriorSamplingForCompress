@@ -124,7 +124,7 @@ def main():
             y = operator.forward(data=ref_img, frame_idx=i, ref_frame=ref_frame, flag=1)
             psnr_sum.append(PSNR(clear_color(ref_img), clear_color(y)))
             
-            plt.imsave(os.path.join(out_path, 'input', fname), clear_color(ref_img))
+            plt.imsave(os.path.join(out_path, 'input', fname), clear_color(y))
              
             # y_n = y
             # y_n = noiser(y)
@@ -135,14 +135,14 @@ def main():
             continue
         
         # Sampling
-        x_start = torch.randn(ref_img.shape, device=device).requires_grad_()
-        sample = sample_fn(x_start=x_start, measurement=y_n, record=True, save_root=out_path, frame_idx=i, ref_frame=ref_frame)
-        ref_frame = ref_img
-        psnr_sum.append(PSNR(clear_color(ref_img), clear_color(sample)))
+        # x_start = torch.randn(ref_img.shape, device=device).requires_grad_()
+        # sample = sample_fn(x_start=x_start, measurement=y_n, record=True, save_root=out_path, frame_idx=i, ref_frame=ref_frame)
+        # ref_frame = ref_img
+        # psnr_sum.append(PSNR(clear_color(ref_img), clear_color(sample)))
 
-        plt.imsave(os.path.join(out_path, 'input', fname), clear_color(y_n))
-        plt.imsave(os.path.join(out_path, 'label', fname), clear_color(ref_img))
-        plt.imsave(os.path.join(out_path, 'recon', fname), clear_color(sample))
+        # plt.imsave(os.path.join(out_path, 'input', fname), clear_color(y_n))
+        # plt.imsave(os.path.join(out_path, 'label', fname), clear_color(ref_img))
+        # plt.imsave(os.path.join(out_path, 'recon', fname), clear_color(sample))
 
 
     cur_all_i_frame_quality = 0
@@ -167,7 +167,7 @@ def main():
         json.dump(results, f, indent=2)
     
 
-  
+
 
 if __name__ == '__main__':
     main()
