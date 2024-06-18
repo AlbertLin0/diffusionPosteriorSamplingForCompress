@@ -75,7 +75,7 @@ def main():
     sample_fn = partial(sampler.p_sample_loop, model=model, measurement_cond_fn=measurement_cond_fn)
    
     # Working directory
-    out_path = os.path.join(args.save_dir, measure_config['operator']['name']+"_vtest")
+    out_path = os.path.join(args.save_dir, measure_config['operator']['name']+"_DCVC_0_quality")
     os.makedirs(out_path, exist_ok=True)
     for img_dir in ['input', 'recon', 'progress', 'label']:
         os.makedirs(os.path.join(out_path, img_dir), exist_ok=True)
@@ -122,11 +122,17 @@ def main():
         else: 
             # Forward measurement model (Ax + n)
             y = operator.forward(data=ref_img, frame_idx=i, ref_frame=ref_frame, flag=1)
-            y_n = y
-            y_n = noiser(y)
+            psnr_sum.append(PSNR(clear_color(ref_img), clear_color(y)))
+            
+            plt.imsave(os.path.join(out_path, 'input', fname), clear_color(ref_img))
+             
+            # y_n = y
+            # y_n = noiser(y)
 
             bpp = operator.getBpp(data=ref_img, frame_idx=i, ref_frame=ref_frame)
             bpp_list.append(bpp)
+            ref_frame = y
+            continue
         
         # Sampling
         x_start = torch.randn(ref_img.shape, device=device).requires_grad_()

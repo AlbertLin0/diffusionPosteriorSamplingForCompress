@@ -257,7 +257,7 @@ def filter_dict(result):
 class OperateDCVC():
     def __init__(self, device, q=2):
         self.video_net = DCVC_net()
-        load_checkpoint = torch.load('models/model_dcvc_quality_0_psnr.pth', map_location=device)
+        load_checkpoint = torch.load('models/model_dcvc_quality_2_psnr.pth', map_location=device)
         self.video_net.load_state_dict(load_checkpoint)
         self.video_net.to(device)
         self.video_net.eval()

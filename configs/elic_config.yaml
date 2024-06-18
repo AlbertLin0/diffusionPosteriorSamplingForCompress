@@ -16,4 +16,4 @@ measurement:
     name: gaussian
     sigma: 0.05
 
-save_path: ./elic_DCVC_result.json
+save_path: ./elic_DCVC_2_quality_result.json
