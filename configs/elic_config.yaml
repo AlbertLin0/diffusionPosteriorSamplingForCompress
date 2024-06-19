@@ -10,10 +10,10 @@ data:
 measurement:
   operator:
     name: DCVC
-    q: 4
+    q: 2
 
   noise: 
     name: gaussian
     sigma: 0.05
 
-save_path: ./elic0150_DCVC_2_quality_result_v1.json
+save_path: ./elic0016_DCVC_0_quality_result_v1.json

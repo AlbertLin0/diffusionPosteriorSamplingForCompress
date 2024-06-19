@@ -75,7 +75,7 @@ def main():
     sample_fn = partial(sampler.p_sample_loop, model=model, measurement_cond_fn=measurement_cond_fn)
    
     # Working directory
-    out_path = os.path.join(args.save_dir, measure_config['operator']['name']+"_DCVC_2_quality_elic0150")
+    out_path = os.path.join(args.save_dir, measure_config['operator']['name']+"_DCVC_0_quality_elic0016")
     os.makedirs(out_path, exist_ok=True)
     for img_dir in ['input', 'recon', 'progress', 'label']:
         os.makedirs(os.path.join(out_path, img_dir), exist_ok=True)
