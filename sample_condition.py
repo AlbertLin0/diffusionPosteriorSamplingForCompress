@@ -54,9 +54,9 @@ def main():
     #"learn_sigma must be the same for model and diffusion configuartion."
     
     # Load model
-    # model = create_model(**model_config)
-    # model = model.to(device)
-    # model.eval()
+    model = create_model(**model_config)
+    model = model.to(device)
+    model.eval()
 
     # Prepare Operator and noise
     measure_config = task_config['measurement']
@@ -71,11 +71,11 @@ def main():
     logger.info(f"Conditioning method : {task_config['conditioning']['method']}")
    
     # Load diffusion sampler
-    # sampler = create_sampler(**diffusion_config) 
-    # sample_fn = partial(sampler.p_sample_loop, model=model, measurement_cond_fn=measurement_cond_fn)
+    sampler = create_sampler(**diffusion_config) 
+    sample_fn = partial(sampler.p_sample_loop, model=model, measurement_cond_fn=measurement_cond_fn)
    
     # Working directory
-    out_path = os.path.join(args.save_dir, measure_config['operator']['name']+"_DCVC_0_quality_elic00016")
+    out_path = os.path.join(args.save_dir, measure_config['operator']['name']+"_DCVC_2_quality_elic00016")
     os.makedirs(out_path, exist_ok=True)
     for img_dir in ['input', 'recon', 'progress', 'label']:
         os.makedirs(os.path.join(out_path, img_dir), exist_ok=True)
