@@ -21,6 +21,7 @@ def load_yaml(file_path: str) -> dict:
     with open(file_path) as f:
         config = yaml.load(f, Loader=yaml.FullLoader)
     return config
+    
 import numpy as np
 def PSNR(input1, input2):
     mse = np.mean((input1 - input2) ** 2)
@@ -50,9 +51,6 @@ def main():
     diffusion_config = load_yaml(args.diffusion_config)
     task_config = load_yaml(args.task_config)
    
-    #assert model_config['learn_sigma'] == diffusion_config['learn_sigma'], \
-    #"learn_sigma must be the same for model and diffusion configuartion."
-    
     # Load model
     model = create_model(**model_config)
     model = model.to(device)
