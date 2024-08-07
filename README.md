@@ -1,9 +1,8 @@
-# Diffusion Posterior Sampling for General Noisy Inverse Problems (ICLR 2023 spotlight)
-
-
+# Diffusion Posterior Sampling for Compress
+![overview](./figures/lossy%20overview.png)
 
 ## Abstract
-
+the work is derived from **Diffusion Posterior Sampling for General Noisy Inverse Problems**, we test different compress method as *Operator* with different compress ratio. If you want to take a test, modify config file and remember *Operator* must have gradient.
 
 
 ## Prerequisites
@@ -26,7 +25,7 @@ Ex) CUDA 10.2 with pytorch 1.7.0
 ### 1) Clone the repository
 
 ```
-git clone https://github.com/DPS2022/diffusion-posterior-sampling
+git clone https://github.com/AlbertLin0/diffusionPosteriorSamplingForCompress/tree/submit
 
 cd diffusion-posterior-sampling
 ```

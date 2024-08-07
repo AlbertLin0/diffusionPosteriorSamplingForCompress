@@ -17,7 +17,7 @@ from PIL import Image
 
 from .video_net import ME_Spynet, GDN, flow_warp, ResBlock, ResBlock_LeakyReLU_0_Point_1
 from .entropy_models.video_entropy_models import BitEstimator, GaussianEncoder
-from utils.stream_helper import get_downsampled_shape
+from util.stream_helper import get_downsampled_shape
 from .layers.layers import MaskedConv2d, subpel_conv3x3
 
 
@@ -247,7 +247,7 @@ class DCVC_net(nn.Module):
         return encoded
 
     def encode(self, ref_frame, input_image, output_path):
-        from utils.stream_helper import encode_p
+        from util.stream_helper import encode_p
         N, C, H, W = ref_frame.size()
         compressed = self.compress(ref_frame, input_image)
         mv_y_string = compressed['mv_y_string']
@@ -264,7 +264,7 @@ class DCVC_net(nn.Module):
         }
 
     def decode(self, ref_frame, input_path):
-        from utils.stream_helper import decode_p
+        from util.stream_helper import decode_p
         height, width, mv_y_string, mv_z_string, y_string, z_string = decode_p(input_path)
         return self.decompress(ref_frame, mv_y_string, mv_z_string,
                                y_string, z_string, height, width)
@@ -426,82 +426,61 @@ class DCVC_net(nn.Module):
 
         return recon_image
 
+    # def view_mv(self, flow_tensor):
 
+    #     magnitude = np.linalg.norm(flow_tensor, axis=2)
+    #     angle = np.arctan2(flow_tensor[..., 1], flow_tensor[..., 0])
 
+    #     plt.figure(figsize=(8, 6))
 
-    ## 光流可视化
-    def view_mv(self, flow_tensor):
-        # 创建一个光流张量（示例）
-        # flow_tensor = np.random.randn(3, 4, 2)  # 这里假设光流张量是一个大小为[3, 4, 2]的3维张量
+    #     plt.quiver(np.arange(flow_tensor.shape[1]), np.arange(flow_tensor.shape[0]),
+    #                flow_tensor[..., 0], flow_tensor[..., 1], magnitude)
 
-        # 计算光流向量的大小和方向
-        magnitude = np.linalg.norm(flow_tensor, axis=2)
-        angle = np.arctan2(flow_tensor[..., 1], flow_tensor[..., 0])
+    #     plt.gca().invert_yaxis()
+    #     plt.gca().set_aspect('equal', adjustable='box')
+    #     plt.xlabel('Width')
+    #     plt.ylabel('Height')
+    #     plt.title('Optical Flow Visualization')
 
-        # 创建图像
-        plt.figure(figsize=(8, 6))
+    #     plt.show()
 
-        # 绘制箭头
-        plt.quiver(np.arange(flow_tensor.shape[1]), np.arange(flow_tensor.shape[0]),
-                   flow_tensor[..., 0], flow_tensor[..., 1], magnitude)
+    # def warp(self, x, flo):
+    #     """
+    #     warp an image/tensor (im2) back to im1, according to the optical flow
+    #     x: [B, C, H, W] (im2)
+    #     flo: [B, 2, H, W] flow
+    #     """
+    #     B, C, H, W = x.size()
+    #     # mesh grid
+    #     xx = torch.arange(0, W).view(1, -1).repeat(H, 1)
+    #     yy = torch.arange(0, H).view(-1, 1).repeat(1, W)
+    #     xx = xx.view(1, 1, H, W).repeat(B, 1, 1, 1)
+    #     yy = yy.view(1, 1, H, W).repeat(B, 1, 1, 1)
+    #     grid = torch.cat((xx, yy), 1).float()
 
-        # 设置坐标轴
-        plt.gca().invert_yaxis()
-        plt.gca().set_aspect('equal', adjustable='box')
-        plt.xlabel('Width')
-        plt.ylabel('Height')
-        plt.title('Optical Flow Visualization')
+    #     # x = x.cuda()
+    #     # grid = grid.cuda()
+    #     vgrid = Variable(grid) + flo  # B,2,H,W
+    #     # scale grid to [-1,1]
+    #     ##2019 code
+    #     vgrid[:, 0, :, :] = 2.0 * vgrid[:, 0, :, :].clone() / max(W - 1, 1) - 1.0
+    #     vgrid[:, 1, :, :] = 2.0 * vgrid[:, 1, :, :].clone() / max(H - 1, 1) - 1.0  
 
-        # 显示图像
-        plt.show()
+    #     vgrid = vgrid.permute(0, 2, 3, 1)
+    #     output = nn.functional.grid_sample(x, vgrid, align_corners=True)
+    #     mask = torch.autograd.Variable(torch.ones(x.size()))#.cuda()
+    #     mask = nn.functional.grid_sample(mask, vgrid, align_corners=True)
 
-    def warp(self, x, flo):
-        """
-        warp an image/tensor (im2) back to im1, according to the optical flow
-        x: [B, C, H, W] (im2)
-        flo: [B, 2, H, W] flow
-        """
-        B, C, H, W = x.size()
-        # mesh grid
-        xx = torch.arange(0, W).view(1, -1).repeat(H, 1)
-        yy = torch.arange(0, H).view(-1, 1).repeat(1, W)
-        xx = xx.view(1, 1, H, W).repeat(B, 1, 1, 1)
-        yy = yy.view(1, 1, H, W).repeat(B, 1, 1, 1)
-        grid = torch.cat((xx, yy), 1).float()
+    #     ##2019 author
+    #     mask[mask < 0.9999] = 0
+    #     mask[mask > 0] = 1
 
-        # x = x.cuda()
-        # grid = grid.cuda()
-        vgrid = Variable(grid) + flo  # B,2,H,W
-        # 图二的每个像素坐标加上它的光流即为该像素点对应在图一的坐标
-
-        # scale grid to [-1,1]
-        ##2019 code
-        vgrid[:, 0, :, :] = 2.0 * vgrid[:, 0, :, :].clone() / max(W - 1, 1) - 1.0
-        # 取出光流v这个维度，原来范围是0~W-1，再除以W-1，范围是0~1，再乘以2，范围是0~2，再-1，范围是-1~1
-        vgrid[:, 1, :, :] = 2.0 * vgrid[:, 1, :, :].clone() / max(H - 1, 1) - 1.0  # 取出光流u这个维度，同上
-
-        vgrid = vgrid.permute(0, 2, 3, 1)  # from B,2,H,W -> B,H,W,2，为什么要这么变呢？是因为要配合grid_sample这个函数的使用
-        output = nn.functional.grid_sample(x, vgrid, align_corners=True)
-        mask = torch.autograd.Variable(torch.ones(x.size()))#.cuda()
-        mask = nn.functional.grid_sample(mask, vgrid, align_corners=True)
-
-        ##2019 author
-        mask[mask < 0.9999] = 0
-        mask[mask > 0] = 1
-
-        ##2019 code
-        # mask = torch.floor(torch.clamp(mask, 0 ,1))
-        return output * mask
-
+    #     ##2019 code
+    #     # mask = torch.floor(torch.clamp(mask, 0 ,1))
+    #     return output * mask
+        
     def forward(self, referframe, input_image, flag = 0):
         estmv = self.opticFlow(input_image, referframe)
-        ##
-        # todo = self.warp(referframe, estmv)
-        # tmp1 = todo.squeeze().permute(1,2,0)
-        # tmp3 = np.uint8(tmp1.numpy()*255)
-        # tmp2 = Image.fromarray(tmp3, "RGB")
-        # tmp2.save("media/data/motion/im{:0>5d}.png".format(self.i))
-        ##
         mvfeature = self.mvEncoder(estmv)
         z_mv = self.mvpriorEncoder(mvfeature)
 
@@ -559,13 +538,6 @@ class DCVC_net(nn.Module):
 
         recon_image_feature = self.contextualDecoder_part1(compressed_y_renorm)
         recon_image = self.contextualDecoder_part2(torch.cat((recon_image_feature, context), dim=1))
-        ##
-        # tmp4 = recon_image.squeeze().permute(1,2,0)
-        # tmp4 = np.uint8(tmp4.numpy()*255)
-        # tmp4 = Image.fromarray(tmp4, "RGB")
-        # tmp4.save("media/data/res/im{:0>5d}.png".format(self.i))
-        # self.i += 1
-        ##
         total_bits_y, _ = self.feature_probs_based_sigma(
             feature_renorm, means_hat, scales_hat)
         total_bits_mv, _ = self.feature_probs_based_sigma(mvfeature, means_hat_mv, scales_hat_mv)
@@ -581,12 +553,6 @@ class DCVC_net(nn.Module):
 
         bpp = bpp_y + bpp_z + bpp_mv_y + bpp_mv_z
 
-        # todo = recon_image
-        # tmp1 = todo.squeeze().permute(1,2,0)
-        # tmp3 = np.uint8(tmp1.numpy()*255)
-        # tmp2 = Image.fromarray(tmp3, "RGB")
-        # tmp2.save("media/data/motion/im{:0>5d}.png".format(self.i))
-        # self.i += 1
         return {"bpp_mv_y": bpp_mv_y,
                 "bpp_mv_z": bpp_mv_z,
                 "bpp_y": bpp_y,

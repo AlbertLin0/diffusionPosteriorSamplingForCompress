@@ -309,7 +309,7 @@ class ScaleHyperprior(CompressionModel):
         return result
 
     def encode(self, x, output_path):
-        from ..utils.stream_helper import encode_i
+        from ..util.stream_helper import encode_i
         N, C, H, W = x.size()
         compressed = self.compress(x)
         y_string = compressed['strings'][0][0]
@@ -318,7 +318,7 @@ class ScaleHyperprior(CompressionModel):
         return len(y_string) + len(z_string)
 
     def decode(self, input_path):
-        from ..utils.stream_helper import decode_i, get_downsampled_shape
+        from ..util.stream_helper import decode_i, get_downsampled_shape
         height, width, y_string, z_string = decode_i(input_path)
         shape = get_downsampled_shape(height, width, 64)
         decompressed = self.decompress([[y_string], [z_string]], shape)
@@ -528,7 +528,7 @@ class JointAutoregressiveHierarchicalPriors(CompressionModel):
         return result
 
     def encode(self, x, output_path):
-        from ..utils.stream_helper import encode_i
+        from ..util.stream_helper import encode_i
         N, C, H, W = x.size()
         compressed = self.compress(x)
         y_string = compressed['strings'][0][0]
@@ -537,7 +537,7 @@ class JointAutoregressiveHierarchicalPriors(CompressionModel):
         return len(y_string) + len(z_string)
 
     def decode(self, input_path):
-        from ..utils.stream_helper import decode_i, get_downsampled_shape
+        from ..util.stream_helper import decode_i, get_downsampled_shape
         height, width, y_string, z_string = decode_i(input_path)
         shape = get_downsampled_shape(height, width, 64)
         decompressed = self.decompress([[y_string], [z_string]], shape)

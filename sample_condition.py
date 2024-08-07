@@ -62,7 +62,7 @@ def main():
     noiser = get_noise(**measure_config['noise'])
     logger.info(f"Operation: {measure_config['operator']['name']} / Noise: {measure_config['noise']['name']}")
 
-    # Prepare conditioning method
+    # Prepare conditioning method: compress
     cond_config = task_config['conditioning']
     cond_method = get_conditioning_method(cond_config['method'], operator, noiser, **cond_config['params'])
     measurement_cond_fn = cond_method.conditioning
@@ -99,14 +99,10 @@ def main():
         fname = str(i).zfill(5) + '.png'
         ref_img = ref_img.to(device)
        
-        # exit 
-        if i == 250: 
-            exit(0)
-
         if i == 0:
             ref_frame = None
 
-        # Exception) In case of inpainging,
+        # Exception) In case of inpainging, we jest test compress task and will not use this
         if measure_config['operator'] ['name'] == 'inpainting':
             mask = mask_gen(ref_img)
             mask = mask[:, 0, :, :].unsqueeze(dim=0)
@@ -122,7 +118,7 @@ def main():
             y = operator.forward(data=ref_img, frame_idx=i, ref_frame=ref_frame, flag=1)
             y_n = y
             y_n = noiser(y)
-
+            # to get bpp from operator
             bpp = operator.getBpp(data=ref_img, frame_idx=i, ref_frame=ref_frame)
             bpp_list.append(bpp)
         
