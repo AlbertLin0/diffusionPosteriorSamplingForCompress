@@ -45,7 +45,7 @@ mv {DOWNLOAD_DIR}/ffqh_10m.pt ./models/
 
 <br />
 
-### 4) Inference
+### 3) Inference
 
 ```
 python3 sample_condition.py \
