@@ -328,7 +328,7 @@ class OperateDCVC():
             bpp = result['bpp']
             return bpp.item()
 
-
+'''
     def result(self):
         cur_all_i_frame_bit = 0
         cur_all_i_frame_quality = 0
@@ -382,7 +382,7 @@ class OperateDCVC():
         res = filter_dict(log_result)
         with open('./result_qianyi.json', 'w') as fp:
             json.dump(res, fp, indent=2)
-
+'''
 
 # =============
 # Noise classes
