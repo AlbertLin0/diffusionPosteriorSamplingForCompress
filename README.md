@@ -29,11 +29,11 @@ cd diffusion-posterior-sampling
 
 ### 2) Download pretrained checkpoint
 From the [link](https://drive.google.com/drive/folders/1jElnRoFv7b31fG0v6pTSQkelbSX3xGZh?usp=sharing), download the checkpoint "ffhq_10m.pt" and paste it to ./models/
-From the [link](https://onedrive.live.com/?authkey=%21AGZwZffbRsVcjSQ&id=2866592D5C55DF8C%211198&cid=2866592D5C55DF8C), download the existing video compressor [DCVC](https://github.com/microsoft/DCVC/tree/main/DCVC) and paste it to ./models/
+From the [link](https://onedrive.live.com/?authkey=%21AGZwZffbRsVcjSQ&id=2866592D5C55DF8C%211198&cid=2866592D5C55DF8C), download the [DCVC](https://github.com/microsoft/DCVC/tree/main/DCVC) checkpoint "model_dcvc_quality_0_psnr.pth" and paste it to ./models/
 ```
 mkdir models
 mv {DOWNLOAD_DIR}/ffqh_10m.pt ./models/
-mv {DOWNLOAD_DIR}/ffqh_10m.pt ./models/
+mv {DOWNLOAD_DIR}/model_dcvc_quality_0_psnr.pth ./models/
 ```
 {DOWNLOAD_DIR} is the directory that you downloaded checkpoint to.
 
