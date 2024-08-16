@@ -16,4 +16,4 @@ measurement:
     name: gaussian
     sigma: 0.05
 
-save_path: ./elic0016_DCVC_0_quality_result_v1.json
+save_path: ./ddim_test.json
