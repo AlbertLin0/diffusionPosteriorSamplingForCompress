@@ -5,6 +5,12 @@
 the work is derived from **Diffusion Posterior Sampling for General Noisy Inverse Problems**, we test different compress method as *Operator* with different compress ratio. If you want to take a test, modify config file and remember *Operator* must have gradient.
 
 
+## Some results
+
+
+
+<br />
+
 ## Prerequisites
 - python 3.8
 
