@@ -4,6 +4,7 @@ from functools import partial
 import matplotlib.pyplot as plt
 import numpy as np
 import torch
+
 from tqdm.auto import tqdm
 
 from util.img_utils import clear_color
@@ -36,7 +37,9 @@ def create_sampler(sampler,
                    dynamic_threshold,
                    clip_denoised,
                    rescale_timesteps,
-                   timestep_respacing=""):
+                   model,
+                   timestep_respacing="",
+                   ):
     
     sampler = get_sampler(name=sampler)
     
@@ -50,7 +53,8 @@ def create_sampler(sampler,
                    model_var_type=model_var_type,
                    dynamic_threshold=dynamic_threshold,
                    clip_denoised=clip_denoised, 
-                   rescale_timesteps=rescale_timesteps)
+                   rescale_timesteps=rescale_timesteps,
+                   model=model)
 
 
 class GaussianDiffusion:
@@ -60,7 +64,8 @@ class GaussianDiffusion:
                  model_var_type,
                  dynamic_threshold,
                  clip_denoised,
-                 rescale_timesteps
+                 rescale_timesteps,
+                 model
                  ):
 
         # use float64 for accuracy.
@@ -73,6 +78,11 @@ class GaussianDiffusion:
         self.rescale_timesteps = rescale_timesteps
 
         alphas = 1.0 - self.betas
+
+        self.sqrt_alphas = np.sqrt(alphas)
+        self.alphas = alphas
+        self.sqrt_recipm1_alphas = np.sqrt(1.0 / self.alphas - 1)
+
         self.alphas_cumprod = np.cumprod(alphas, axis=0)
         self.alphas_cumprod_prev = np.append(1.0, self.alphas_cumprod[:-1])
         self.alphas_cumprod_next = np.append(self.alphas_cumprod[1:], 0.0)
@@ -110,6 +120,7 @@ class GaussianDiffusion:
     
         self.var_processor = get_var_processor(model_var_type,
                                                betas=betas)
+        self.model = model
 
     def q_mean_variance(self, x_start, t):
         """
@@ -144,6 +155,19 @@ class GaussianDiffusion:
         coef2 = extract_and_expand(self.sqrt_one_minus_alphas_cumprod, t, x_start)
 
         return coef1 * x_start + coef2 * noise
+    
+    def q_sample_for_image_editing(self, x_prev, t):
+        """
+        使用X0 通过diffusion model去噪的逆过程 加噪得到xt
+        """
+        # float coef
+        coef1 = extract_and_expand(self.sqrt_alphas_cumprod, t+1, x_prev) / extract_and_expand(self.sqrt_alphas_cumprod, t, x_prev)
+        coef2 = extract_and_expand(self.sqrt_alphas_cumprod, t+1, x_prev) * ( extract_and_expand(self.sqrt_recipm1_alphas_cumprod, t+1, x_prev) - extract_and_expand(self.sqrt_recipm1_alphas_cumprod, t, x_prev) )
+
+        out = self.p_sample(x_prev, t, flag = 1)
+
+        return coef1 * x_prev + coef2 * out["noise"]
+
 
     def q_posterior_mean_variance(self, x_start, x_t, t):
         """
@@ -167,15 +191,64 @@ class GaussianDiffusion:
         )
         return posterior_mean, posterior_variance, posterior_log_variance_clipped
 
+    def r_channel_histogram(self, img):
+        flatten_r_channel_array = np.sort(img[0][0].flatten()) 
+        length = len(flatten_r_channel_array)
+        pdf = []
+        bin_size = 2.0 / 256.0 
+        tmp = 0
+        for i in range(256):
+            density = 0
+            lower_bound = i * bin_size - 1
+            upper_bound = (i + 1) * bin_size - 1
+
+            for j in range(tmp, length):
+                if flatten_r_channel_array[j] >= lower_bound and flatten_r_channel_array[j] < upper_bound:
+                    density += 1
+                elif flatten_r_channel_array[j] < lower_bound:
+                    continue
+                else:
+                    pdf.append(density / length)
+                    tmp = j
+                    break
+        return pdf 
+
+    def q_sample_loop(self,x_start):
+        """
+        Sample from the diffusion process for a given number of steps.
+
+        :param model: the model to use for sampling.
+        :param x_start: the initial data batch.
+        :param timesteps: the number of diffusion steps to take.
+        :return: A noisy version of x_start.
+        """
+
+        x_prev = x_start
+        device = x_start.device
+
+        pbar = tqdm(list(range(self.num_timesteps))[:-1])
+        for idx in pbar:
+            time = torch.tensor([idx] * x_prev.shape[0], device=device)
+            a = self.q_sample_for_image_editing(x_prev, time)
+            # 模型的输出结果每次都占用内存不释放。
+            # x_prev = torch.tensor(a, device="cuda")
+            x_prev = a.clone().detach()
+
+            # with open('pdf_list.txt', 'w') as file:
+            #     file.write(','.join(map(str, self.r_channel_histogram(x_prev.cpu().detach().numpy()))))
+            pbar.set_postfix({'timestep': idx}, refresh=False)
+            if idx % 10 == 0:
+                file_path = os.path.join("./results/elic_vtest/", f"progress/x_{str(idx).zfill(4)}.png")
+                plt.imsave(file_path, clear_color(x_prev))
+        return x_prev
+
     def p_sample_loop(self,
-                      model,
                       x_start,
                       measurement,
-                      measurement_cond_fn,
-                      record,
-                      save_root,
-                      frame_idx,
-                      ref_frame):
+                      measurement_cond_fn):
+                    #   record,
+                    #   save_root,
+                    #   frame_idx):
         """
         The function used for sampling from noise.
         """ 
@@ -187,34 +260,37 @@ class GaussianDiffusion:
             time = torch.tensor([idx] * img.shape[0], device=device)
             
             img = img.requires_grad_()
-            out = self.p_sample(x=img, t=time, model=model)
+            if idx < 0:
+                out = self.p_sample(x=img, t=time, flag=2)
+            else:
+                out = self.p_sample(x=img, t=time)
+            # out = self.p_sample(x=img, t=time)
             
             # Give condition.
-            noisy_measurement = self.q_sample(measurement, t=time)
+            # noisy_measurement = self.q_sample(measurement, t=time)
 
             # TODO: how can we handle argument for different condition method?
             img, distance = measurement_cond_fn(x_t=out['sample'],
                                       measurement=measurement,
-                                      noisy_measurement=noisy_measurement,
                                       x_prev=img,
                                       x_0_hat=out['pred_xstart'],
-                                      frame_idx=frame_idx,
-                                      ref_frame=ref_frame)
+                                        )
             img = img.detach_()
-           
+
+            # img = out["sample"].clone().detach()
             pbar.set_postfix({'distance': distance.item()}, refresh=False)
-            if record:
-                if idx % 10 == 0:
-                    file_path = os.path.join(save_root, f"progress/x_{str(idx).zfill(4)}.png")
-                    plt.imsave(file_path, clear_color(img))
+            # if record:
+            if idx % 10 == 0:
+                file_path = os.path.join("results/elic_vtest/", f"progress/x_{str(idx).zfill(4)}.png")
+                plt.imsave(file_path, clear_color(img))
 
         return img       
         
     def p_sample(self, model, x, t):
         raise NotImplementedError
 
-    def p_mean_variance(self, model, x, t):
-        model_output = model(x, self._scale_timesteps(t))
+    def p_mean_variance(self, x, t):
+        model_output = self.model(x, self._scale_timesteps(t))
         
         # In the case of "learned" variance, model will give twice channels.
         if model_output.shape[1] == 2 * x.shape[1]:
@@ -229,8 +305,8 @@ class GaussianDiffusion:
         model_variance, model_log_variance = self.var_processor.get_variance(model_var_values, t)
 
         assert model_mean.shape == model_log_variance.shape == pred_xstart.shape == x.shape
-
         return {'mean': model_mean,
+                'noise': model_output,
                 'variance': model_variance,
                 'log_variance': model_log_variance,
                 'pred_xstart': pred_xstart}
@@ -321,10 +397,10 @@ class SpacedDiffusion(GaussianDiffusion):
         kwargs["betas"] = np.array(new_betas)
         super().__init__(**kwargs)
 
-    def p_mean_variance(
-        self, model, *args, **kwargs
-    ):  # pylint: disable=signature-differs
-        return super().p_mean_variance(self._wrap_model(model), *args, **kwargs)
+    # def p_mean_variance(
+    #     self, model, *args, **kwargs
+    # ):  # pylint: disable=signature-differs
+    #     return super().p_mean_variance(self._wrap_model(model), *args, **kwargs)
 
     def training_losses(
         self, model, *args, **kwargs
@@ -366,8 +442,8 @@ class _WrappedModel:
 
 @register_sampler(name='ddpm')
 class DDPM(SpacedDiffusion):
-    def p_sample(self, model, x, t):
-        out = self.p_mean_variance(model, x, t)
+    def p_sample(self, x, t):
+        out = self.p_mean_variance(x, t)
         sample = out['mean']
 
         noise = torch.randn_like(x)
@@ -379,11 +455,22 @@ class DDPM(SpacedDiffusion):
 
 @register_sampler(name='ddim')
 class DDIM(SpacedDiffusion):
-    def p_sample(self, model, x, t, eta=0.0):
-        out = self.p_mean_variance(model, x, t)
-        
+    def p_sample(self, x, t, eta=1.0, flag = 0):
+        if flag == 1:
+            eta = 0.0
+
+        # Equation 12.
+        # noise = torch.randn_like(x)
+        if flag == 2:
+            noise = torch.randn((1,3,128,128), device=x.device)
+            noise = torch.repeat_interleave(noise, 2, dim=2)
+            noise = torch.repeat_interleave(noise, 2, dim=3)
+            eta = 0.1
+        else: 
+            noise = torch.randn_like(x)
+
+        out = self.p_mean_variance(x, t)
         eps = self.predict_eps_from_x_start(x, t, out['pred_xstart'])
-        
         alpha_bar = extract_and_expand(self.alphas_cumprod, t, x)
         alpha_bar_prev = extract_and_expand(self.alphas_cumprod_prev, t, x)
         sigma = (
@@ -391,8 +478,7 @@ class DDIM(SpacedDiffusion):
             * torch.sqrt((1 - alpha_bar_prev) / (1 - alpha_bar))
             * torch.sqrt(1 - alpha_bar / alpha_bar_prev)
         )
-        # Equation 12.
-        noise = torch.randn_like(x)
+
         mean_pred = (
             out["pred_xstart"] * torch.sqrt(alpha_bar_prev)
             + torch.sqrt(1 - alpha_bar_prev - sigma ** 2) * eps
@@ -402,7 +488,7 @@ class DDIM(SpacedDiffusion):
         if t != 0:
             sample += sigma * noise
         
-        return {"sample": sample, "pred_xstart": out["pred_xstart"]}
+        return {"sample": sample, "pred_xstart": out["pred_xstart"], "noise": out["noise"]}
 
     def predict_eps_from_x_start(self, x_t, t, pred_xstart):
         coef1 = extract_and_expand(self.sqrt_recip_alphas_cumprod, t, x_t)

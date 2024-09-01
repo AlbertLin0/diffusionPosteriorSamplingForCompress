@@ -1,15 +1,16 @@
 conditioning:
   method: ps
   params:
-    scale: 0.8
+    scale: 0.5
+    noise_step: 1000
 
 data:
   name: ffhq
-  root: ./data/foreman_cif/
+  root: ./data/test1/
 
 measurement:
   operator:
-    name: DCVC
+    name: elic
     q: 2
 
   noise: 

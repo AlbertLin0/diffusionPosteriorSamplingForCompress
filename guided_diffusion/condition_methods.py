@@ -27,10 +27,9 @@ class ConditioningMethod(ABC):
     
     def grad_and_value(self, x_prev, x_0_hat, measurement, **kwargs):
         if self.noiser.__name__ == 'gaussian':
-            difference = measurement - self.operator.forward(data=x_0_hat, **kwargs)
+            difference = measurement - x_0_hat#self.operator.forward(data=x_0_hat, **kwargs)
             norm = torch.linalg.norm(difference)
             norm_grad = torch.autograd.grad(outputs=norm, inputs=x_prev)[0]
-            print(torch.sum(torch.abs(norm) ))
         
         elif self.noiser.__name__ == 'poisson':
             Ax = self.operator.forward(x_0_hat, **kwargs)
