@@ -3,7 +3,7 @@ import os
 import argparse
 import yaml
 import json
-
+from PIL import Image
 import torch
 import torchvision.transforms as transforms
 import matplotlib.pyplot as plt
@@ -93,13 +93,28 @@ def main():
         fname = str(i).zfill(5) + '.png'
         ref_img = ref_img.to(device)
 
-        xt = sampler.q_sample_loop(ref_img)
-        sample = sampler.p_sample_loop(xt, ref_img, measurement_cond_fn=measurement_cond_fn)
+        # img_mohu = Image.open('data/test3/test1.png').convert('RGB')
+        # img_mohu = transform(img_mohu)
+        # img_mohu = img_mohu.to(device).unsqueeze(0)
+
+        bpp = operator.getBpp(ref_img) 
+        print(bpp)
+        torch.manual_seed(0)
+        y = operator.forward(ref_img, mode='forward')
+        # print(np.sum(clear_color(img_mohu) - clear_color(y)))
+        # print(torch.mean(img_mohu))
+        xt = torch.randn_like(ref_img, device = device)
+        # xt = sampler.q_sample_loop(img_mohu)
+        # print(torch.mean(xt))
+        # print(torch.var(xt))
+        sample = sampler.p_sample_loop(xt, y, measurement_cond_fn=measurement_cond_fn,truth=ref_img)
         
-        file_path_label = os.path.join("./results/elic_vtest/", f"label/{str(i).zfill(4)}.png")
-        file_path = os.path.join("./results/elic_vtest/", f"recon/test8_{str(i).zfill(4)}.png")
+        file_path_label = os.path.join("./results/elic_vtest/", f"input/{str(i).zfill(4)}.png")
+        file_path = os.path.join("./results/elic_vtest/", f"recon/test28_{str(i).zfill(4)}.png")
         plt.imsave(file_path, clear_color(sample))
-        plt.imsave(file_path_label, clear_color(ref_img))
+        # print(np.sum(clear_color(img_mohu) - clear_color(y)))
+        plt.imsave(file_path_label, clear_color(y))
+
 
 if __name__ == '__main__':
     main()

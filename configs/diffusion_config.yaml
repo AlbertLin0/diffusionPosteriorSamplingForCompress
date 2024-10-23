@@ -6,5 +6,5 @@ model_var_type: learned_range
 dynamic_threshold: False
 clip_denoised: True
 rescale_timesteps: False
-timestep_respacing: 1000
+timestep_respacing: 500
 

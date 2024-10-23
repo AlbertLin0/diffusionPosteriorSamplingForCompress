@@ -31,7 +31,8 @@ def get_dataloader(dataset: VisionDataset,
                             batch_size, 
                             shuffle=train, 
                             num_workers=num_workers, 
-                            drop_last=train)
+                            drop_last=train,
+                            )
     return dataloader
 
 
@@ -53,12 +54,10 @@ class FFHQDataset(VisionDataset):
         # 修改
         # img = np.asarray(img).astype('float64').transpose(2, 0, 1)
         # img = torch.from_numpy(img).type(torch.FloatTensor)
-        # img = img/255
-
+        # img = img/255 
 
         if self.transforms is not None:
             img = self.transforms(img)
-        
         return img
     
 

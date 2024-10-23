@@ -373,6 +373,9 @@ class Quantizer():
             return inputs
         elif quantize_type == "ste":
             return torch.round(inputs) - inputs.detach() + inputs
+        elif quantize_type == "same":
+            """this is a test, CNN 是否存在病态问题"""
+            return inputs
         else:
             return torch.round(inputs)
 
@@ -504,7 +507,7 @@ class TestModel(CompressionModel):
         if not noisequant:
             z_offset = self.entropy_bottleneck._get_medians()
             z_tmp = z - z_offset
-            z_hat = ste_round.apply(z_tmp) + z_offset
+            z_hat = ste_round.apply(z_tmp + torch.empty_like(z_tmp).uniform_(-0.5, 0.5)) + z_offset
 
         latent_means, latent_scales = self.h_s(z_hat).chunk(2, 1)
 
@@ -556,8 +559,9 @@ class TestModel(CompressionModel):
                 y_anchor_quantilized = self.quantizer.quantize(y_anchor, "noise")
                 y_anchor_quantilized_for_gs = self.quantizer.quantize(y_anchor, "ste")
             else:
-                y_anchor_quantilized = self.quantizer.quantize(y_anchor - means_anchor, "ste") + means_anchor
-                y_anchor_quantilized_for_gs = self.quantizer.quantize(y_anchor - means_anchor, "ste") + means_anchor
+                # ---------- TUDO: check the quantization method
+                y_anchor_quantilized = self.quantizer.quantize(y_anchor - means_anchor, "noise") + means_anchor
+                y_anchor_quantilized_for_gs = self.quantizer.quantize(y_anchor - means_anchor, "noise") + means_anchor
 
             y_anchor_quantilized[:, :, 0::2, 1::2] = 0
             y_anchor_quantilized[:, :, 1::2, 0::2] = 0
@@ -582,9 +586,9 @@ class TestModel(CompressionModel):
                 y_non_anchor_quantilized_for_gs = self.quantizer.quantize(y_non_anchor, "ste")
             else:
                 y_non_anchor_quantilized = self.quantizer.quantize(y_non_anchor - means_non_anchor,
-                                                                          "ste") + means_non_anchor
+                                                                          "noise") + means_non_anchor
                 y_non_anchor_quantilized_for_gs = self.quantizer.quantize(y_non_anchor - means_non_anchor,
-                                                                          "ste") + means_non_anchor
+                                                                          "noise") + means_non_anchor
 
 
             y_non_anchor_quantilized[:, :, 0::2, 0::2] = 0

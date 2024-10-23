@@ -164,7 +164,7 @@ class GaussianDiffusion:
         coef1 = extract_and_expand(self.sqrt_alphas_cumprod, t+1, x_prev) / extract_and_expand(self.sqrt_alphas_cumprod, t, x_prev)
         coef2 = extract_and_expand(self.sqrt_alphas_cumprod, t+1, x_prev) * ( extract_and_expand(self.sqrt_recipm1_alphas_cumprod, t+1, x_prev) - extract_and_expand(self.sqrt_recipm1_alphas_cumprod, t, x_prev) )
 
-        out = self.p_sample(x_prev, t, flag = 1)
+        out = self.p_sample(x_prev, t+1, flag = 1)
 
         return coef1 * x_prev + coef2 * out["noise"]
 
@@ -245,7 +245,8 @@ class GaussianDiffusion:
     def p_sample_loop(self,
                       x_start,
                       measurement,
-                      measurement_cond_fn):
+                      measurement_cond_fn,
+                      truth):
                     #   record,
                     #   save_root,
                     #   frame_idx):
@@ -256,26 +257,46 @@ class GaussianDiffusion:
         device = x_start.device
 
         pbar = tqdm(list(range(self.num_timesteps))[::-1])
+        distance = torch.tensor(999, device = x_start.device)
         for idx in pbar:
             time = torch.tensor([idx] * img.shape[0], device=device)
-            
+
             img = img.requires_grad_()
             if idx < 0:
-                out = self.p_sample(x=img, t=time, flag=2)
+                out = self.p_sample(x=img, t=time, flag=1)
             else:
                 out = self.p_sample(x=img, t=time)
             # out = self.p_sample(x=img, t=time)
             
             # Give condition.
             # noisy_measurement = self.q_sample(measurement, t=time)
-
+            imgTmp = out["sample"].clone().detach_()
             # TODO: how can we handle argument for different condition method?
-            img, distance = measurement_cond_fn(x_t=out['sample'],
-                                      measurement=measurement,
-                                      x_prev=img,
-                                      x_0_hat=out['pred_xstart'],
-                                        )
-            img = img.detach_()
+            if idx >= 0:
+                img, distance = measurement_cond_fn(
+                                        x_t=out['sample'],
+                                        measurement=measurement,
+                                        x_prev=img,
+                                        x_0_hat=out['pred_xstart'],
+                                        coef2 = self.betas[idx]/(self.sqrt_alphas[idx] * self.sqrt_one_minus_alphas_cumprod[idx]),
+                                        noise_coef = out["noise_coef"],
+                                        true_measurement = truth,
+                                        noise = out["noise"],)
+                # img[:,:,:,::2] = imgTmp[:,:,:,::2]
+                # img += out["noise_coef"] * torch.randn_like(img)
+                img = img.detach_()
+            # elif idx >= 0:
+            #     img, distance = measurement_cond_fn(x_t=out['sample'],
+            #                             measurement=measurement,
+            #                             x_prev=img,
+            #                             x_0_hat=out['pred_xstart'],
+            #                                 )
+            #     img[:,:,:,::2] = imgTmp[:,:,:,1::2]
+            #     img = img.detach_()
+            else:
+                img = out["sample"].detach_()
+
+
 
             # img = out["sample"].clone().detach()
             pbar.set_postfix({'distance': distance.item()}, refresh=False)
@@ -461,13 +482,7 @@ class DDIM(SpacedDiffusion):
 
         # Equation 12.
         # noise = torch.randn_like(x)
-        if flag == 2:
-            noise = torch.randn((1,3,128,128), device=x.device)
-            noise = torch.repeat_interleave(noise, 2, dim=2)
-            noise = torch.repeat_interleave(noise, 2, dim=3)
-            eta = 0.1
-        else: 
-            noise = torch.randn_like(x)
+        noise = torch.randn_like(x)
 
         out = self.p_mean_variance(x, t)
         eps = self.predict_eps_from_x_start(x, t, out['pred_xstart'])
@@ -488,7 +503,7 @@ class DDIM(SpacedDiffusion):
         if t != 0:
             sample += sigma * noise
         
-        return {"sample": sample, "pred_xstart": out["pred_xstart"], "noise": out["noise"]}
+        return {"sample": sample, "pred_xstart": out["pred_xstart"], "noise_coef": sigma, "noise":out["noise"]}
 
     def predict_eps_from_x_start(self, x_t, t, pred_xstart):
         coef1 = extract_and_expand(self.sqrt_recip_alphas_cumprod, t, x_t)

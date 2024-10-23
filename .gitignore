@@ -1,4 +1,6 @@
 /results/
+/scripts/
+/data/
 /result_DCVC/
 /venv/
 !dataloader.py
@@ -12,4 +14,7 @@
 *.tar
 *.npz
 .vscode
+*.npy
+*.png
+*.txt
 Dockerfile

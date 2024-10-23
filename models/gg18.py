@@ -38,8 +38,11 @@ class GaussianConditionalNoQuant(GaussianConditional):
 
 class ste_round(torch.autograd.Function):
     @staticmethod
-    def forward(ctx, x):
-        return torch.round(x)
+    def forward(ctx, x, mode = "origin"):
+        if mode == "origin":
+            return torch.round(x)
+        elif mode == "same":
+            return x
 
     @staticmethod
     def backward(ctx, x_hat_grad):
@@ -65,29 +68,30 @@ cvt = {
 class ScaleHyperpriorSTE(ScaleHyperprior):
     def __init__(self, N, M, **kwargs):
         super().__init__(N, M, **kwargs)
-        self.entropy_bottleneck = EntropyBottleneckNoQuant(N)
-        self.gaussian_conditional = GaussianConditionalNoQuant(None)
+        # self.entropy_bottleneck = EntropyBottleneckNoQuant(N)
+        # self.gaussian_conditional = GaussianConditionalNoQuant(None)
 
     def quantize(self, inputs, mode):
         return ste_round.apply(inputs)
 
-    def forward(self, x, mode="all"):
-        y = self.g_a(x)
-        z = self.h_a(torch.abs(y))
-        y_hat = self.quantize(y, "round")
-        if mode == "enc":
-            return { 
-                "y_hat": y_hat
-            }
-        z_hat = self.quantize(z, "round")
-        z_likelihoods = self.entropy_bottleneck(z)
-        scales_hat = self.h_s(z_hat)
-        y_likelihoods = self.gaussian_conditional(y_hat, scales_hat, None)
-        x_hat = self.g_s(y_hat)
-        return {
-            "x_bar": x_hat,
-            "likelihoods": {"y": y_likelihoods, "z": z_likelihoods},
-        }
+    # def forward(self, x, mode="all"):
+    #     y = self.g_a(x)
+    #     z = self.h_a(torch.abs(y))
+    #     # y_hat = self.quantize(y, "round")
+    #     y_hat = y
+    #     if mode == "enc":
+    #         return { 
+    #             "y_hat": y_hat
+    #         }
+    #     z_hat = self.quantize(z, "round")
+    #     # z_likelihoods = self.entropy_bottleneck(z)
+    #     scales_hat = self.h_s(z_hat)
+    #     # y_likelihoods = self.gaussian_conditional(y_hat, scales_hat, None)
+    #     x_hat = self.g_s(y_hat)
+    #     return {
+    #         "x_bar": x_hat,}
+    #     #     "likelihoods": {"y": y_likelihoods, "z": z_likelihoods},
+    #     # }
     def load_state_dict_gg18(self, sd):
         sdkeys = list(sd.keys())
         for key in sdkeys:

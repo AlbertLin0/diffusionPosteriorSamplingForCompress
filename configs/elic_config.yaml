@@ -10,7 +10,7 @@ data:
 
 measurement:
   operator:
-    name: elic
+    name: gg18_test
     q: 2
 
   noise: 

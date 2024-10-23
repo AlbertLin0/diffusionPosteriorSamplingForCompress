@@ -1,0 +1,19 @@
+conditioning:
+  method: ps
+  params:
+    scale: 0.6
+    noise_step: 1000
+
+data:
+  name: ffhq
+  root: ./data/test1/
+
+measurement:
+  operator:
+    name: gg18
+    q: 2
+  noise: 
+    name: gaussian
+    sigma: 0.05
+
+save_path: ./ddim_test.json
