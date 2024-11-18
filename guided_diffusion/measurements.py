@@ -270,7 +270,7 @@ from compressai.zoo import bmshj2018_factorized, bmshj2018_hyperprior
 @register_operator(name='gg18_test')
 class CodecOperator(NonLinearOperator):
     def __init__(self, q, device):
-        self.codec = bmshj2018_factorized(quality=q, metric='mse', pretrained=True, progress=True)
+        self.codec = bmshj2018_factorized(quality=3, metric='mse', pretrained=True, progress=True)
         self.codec = self.codec.cuda()
         self.codec.eval()
         print("load gg18 q: {}".format(q))

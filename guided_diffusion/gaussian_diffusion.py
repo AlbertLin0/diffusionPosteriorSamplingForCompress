@@ -281,7 +281,10 @@ class GaussianDiffusion:
                                         coef2 = self.betas[idx]/(self.sqrt_alphas[idx] * self.sqrt_one_minus_alphas_cumprod[idx]),
                                         noise_coef = out["noise_coef"],
                                         true_measurement = truth,
-                                        noise = out["noise"],)
+                                        noise = out["noise"],
+                                        sqrt_recip_alphas_cumprod = self.sqrt_recip_alphas_cumprod,
+                                        one_minus_alphas_cumprod = 1.0 - self.alphas_cumprod
+                                        )
                 # img[:,:,:,::2] = imgTmp[:,:,:,::2]
                 # img += out["noise_coef"] * torch.randn_like(img)
                 img = img.detach_()

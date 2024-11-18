@@ -16,6 +16,7 @@ from data.dataloader import get_dataset, get_dataloader
 from util.img_utils import clear_color, mask_generator
 from util.logger import get_logger
 
+from torchsummary import summary
 
 def load_yaml(file_path: str) -> dict:
     with open(file_path) as f:
@@ -56,6 +57,9 @@ def main():
     model = create_model(**model_config)
     model = model.to(device)
     model.eval()
+    print(model)
+    print(" ---------------------- ")
+    summary(model)
 
     # Prepare Operator and noise
     measure_config = task_config['measurement']
@@ -109,7 +113,7 @@ def main():
         # print(torch.var(xt))
         sample = sampler.p_sample_loop(xt, y, measurement_cond_fn=measurement_cond_fn,truth=ref_img)
         
-        file_path_label = os.path.join("./results/elic_vtest/", f"input/{str(i).zfill(4)}.png")
+        file_path_label = os.path.join("./results/elic_vtest/", f"input/test{str(i).zfill(4)}.png")
         file_path = os.path.join("./results/elic_vtest/", f"recon/test28_{str(i).zfill(4)}.png")
         plt.imsave(file_path, clear_color(sample))
         # print(np.sum(clear_color(img_mohu) - clear_color(y)))

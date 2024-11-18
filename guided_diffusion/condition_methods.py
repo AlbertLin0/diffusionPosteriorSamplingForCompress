@@ -24,7 +24,7 @@ class ConditioningMethod(ABC):
     def __init__(self, operator, noiser, **kwargs):
         self.operator = operator
         self.noiser = noiser
-        self.i = 1000
+        self.i = 999
     
     def project(self, data, noisy_measurement, **kwargs):
         return self.operator.project(data=data, measurement=noisy_measurement, **kwargs)
@@ -35,20 +35,25 @@ class ConditioningMethod(ABC):
             if self.i < 0:
                 difference = kwargs['true_measurement'] - x_0_hat
             else:
-                difference = measurement - self.operator.forward(data=x_0_hat, **kwargs)
+                # difference = measurement - self.operator.forward(data=x_0_hat, **kwargs)
+                difference = measurement - x_0_hat
 
             # with open('difference.txt', 'a') as f:
             #     f.write(str(torch.mean(difference).item())+ ' ' + str(torch.var(difference).item()) + '\n')
             # with open('difference_truth.txt', 'a') as f:
             #     f.write(str(torch.mean(difference_truth).item())+ ' ' + str(torch.var(difference_truth).item()) + '\n')
-
+            # norm = difference.pow(2).sum()
             norm = torch.linalg.norm(difference)
+            # # tmp = torch.sum(difference)
+            # # print(tmp)
             norm_grad = torch.autograd.grad(outputs=norm, inputs=x_prev)[0]
+            norm_constant_c = (norm / x_0_hat - kwargs["sqrt_recip_alphas_cumprod"][self.i]) / kwargs["one_minus_alphas_cumprod"][self.i] * kwargs["sqrt_recip_alphas_cumprod"][self.i]
+            pass
             
             # if self.i % 10 == 0:
-            #     difference_truth = kwargs['true_measurement'] - x_0_hat
+            # #     difference_truth = kwargs['true_measurement'] - x_0_hat
             #     file_path = os.path.join("results/elic_vtest/", f"noise/x_{str(self.i).zfill(4)}.png")
-            #     plt.imsave(file_path, clear_color(difference))
+            #     plt.imsave(file_path, clear_color(x_0_hat))
             #     file_path = os.path.join("results/elic_vtest/", f"norm_grad/x_{str(self.i).zfill(4)}.png")
             #     plt.imsave(file_path, clear_color(difference_truth))
 
@@ -105,7 +110,6 @@ class PosteriorSampling(ConditioningMethod):
 
     def conditioning(self, x_prev, x_t, x_0_hat, measurement, **kwargs):
         norm_grad, norm = self.grad_and_value(x_prev=x_prev, x_0_hat=x_0_hat, measurement=measurement, **kwargs)
-        self.i -= 1
         # norm_grad = torch.clamp(norm_grad, -kwargs["coef2"], kwargs["coef2"])
         """kwargs["coef2"] 是第self.i次去噪的噪声系数, 后一项为调整系数"""
 
@@ -113,6 +117,7 @@ class PosteriorSampling(ConditioningMethod):
         """ODE的情况下，不增加噪声导致生成图片含有大量高斯噪声"""
 
         # tmp = torch.randn_like(x_t) #* kwargs['noise_coef'] #- norm_grad * 0.6# kwargs["coef2"] * self.coef[self.i]
+        # if self.i <= 100:
         x_t -= norm_grad * 0.6
         # if self.i > 0:
         #     x_t += tmp
@@ -120,6 +125,7 @@ class PosteriorSampling(ConditioningMethod):
         #     tmp2 = tmp-norm_grad
         #     file_path = os.path.join("results/elic_vtest/", f"afterNoiseNorm_grad/x_{str(self.i).zfill(4)}.png")
         #     plt.imsave(file_path, clear_color(tmp2))
+        self.i -= 1
         return x_t, norm
         
 @register_conditioning_method(name='ps+')
