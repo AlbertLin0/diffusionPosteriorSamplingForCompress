@@ -75,7 +75,7 @@ def main():
     sample_fn = partial(sampler.p_sample_loop, model=model, measurement_cond_fn=measurement_cond_fn)
    
     # Working directory
-    out_path = os.path.join(args.save_dir, measure_config['operator']['name']+"_DCVC_0_quality_elic0016")
+    out_path = os.path.join(args.save_dir, measure_config['operator']['name']+"_inpainting")
     os.makedirs(out_path, exist_ok=True)
     for img_dir in ['input', 'recon', 'progress', 'label']:
         os.makedirs(os.path.join(out_path, img_dir), exist_ok=True)
@@ -105,9 +105,6 @@ def main():
         if i == 250: 
             exit(0)
 
-        if i == 0:
-            ref_frame = None
-
         # Exception) In case of inpainging,
         if measure_config['operator'] ['name'] == 'inpainting':
             mask = mask_gen(ref_img)
@@ -121,7 +118,7 @@ def main():
 
         else: 
             # Forward measurement model (Ax + n)
-            y = operator.forward(data=ref_img, frame_idx=i, ref_frame=ref_frame, flag=1)
+            y = operator.forward(data=ref_img, flag=1)
             psnr_sum.append(PSNR(clear_color(ref_img), clear_color(y)))
             
             plt.imsave(os.path.join(out_path, 'input', fname), clear_color(y))
@@ -129,42 +126,40 @@ def main():
             # y_n = y
             # y_n = noiser(y)
 
-            bpp = operator.getBpp(data=ref_img, frame_idx=i, ref_frame=ref_frame)
+            bpp = operator.getBpp(data=ref_img)
             bpp_list.append(bpp)
-            ref_frame = y
-            continue
         
         # Sampling
-        # x_start = torch.randn(ref_img.shape, device=device).requires_grad_()
-        # sample = sample_fn(x_start=x_start, measurement=y_n, record=True, save_root=out_path, frame_idx=i, ref_frame=ref_frame)
+        x_start = torch.randn(ref_img.shape, device=device).requires_grad_()
+        sample = sample_fn(x_start=x_start, measurement=y_n, record=True, save_root=out_path)
         # ref_frame = ref_img
         # psnr_sum.append(PSNR(clear_color(ref_img), clear_color(sample)))
 
-        # plt.imsave(os.path.join(out_path, 'input', fname), clear_color(y_n))
-        # plt.imsave(os.path.join(out_path, 'label', fname), clear_color(ref_img))
-        # plt.imsave(os.path.join(out_path, 'recon', fname), clear_color(sample))
+        plt.imsave(os.path.join(out_path, 'input', fname), clear_color(y_n))
+        plt.imsave(os.path.join(out_path, 'label', fname), clear_color(ref_img))
+        plt.imsave(os.path.join(out_path, 'recon', fname), clear_color(sample))
 
 
-    cur_all_i_frame_quality = 0
-    cur_all_p_frame_quality = 0
-    cur_all_i_frame_bpp = 0
-    cur_all_p_frame_bpp = 0
-    frame_num = len(psnr_sum)
-    i_frame_num = 0
-    for i, psnr in enumerate(psnr_sum):
-        if i % 10 == 0:
-            cur_all_i_frame_quality += psnr
-            cur_all_i_frame_bpp += bpp_list[i]
-            i_frame_num += 1
-        else:
-            cur_all_p_frame_quality += psnr
-            cur_all_p_frame_bpp += bpp_list[i]
+    # cur_all_i_frame_quality = 0
+    # cur_all_p_frame_quality = 0
+    # cur_all_i_frame_bpp = 0
+    # cur_all_p_frame_bpp = 0
+    # frame_num = len(psnr_sum)
+    # i_frame_num = 0
+    # for i, psnr in enumerate(psnr_sum):
+    #     if i % 10 == 0:
+    #         cur_all_i_frame_quality += psnr
+    #         cur_all_i_frame_bpp += bpp_list[i]
+    #         i_frame_num += 1
+    #     else:
+    #         cur_all_p_frame_quality += psnr
+    #         cur_all_p_frame_bpp += bpp_list[i]
 
-    results = {'cur_frame_quality': psnr, 'cur_avg_i_frame_psnr': cur_all_i_frame_quality / i_frame_num, 'cur_avg_p_frame_psnr': cur_all_p_frame_quality / (frame_num - i_frame_num),
-               'cur_avg_i_frame_bpp': cur_all_i_frame_bpp / i_frame_num, 'cur_avg_p_frame_bpp': cur_all_p_frame_bpp / (frame_num - i_frame_num), 'frame_num': frame_num}
+    # results = {'cur_frame_quality': psnr, 'cur_avg_i_frame_psnr': cur_all_i_frame_quality / i_frame_num, 'cur_avg_p_frame_psnr': cur_all_p_frame_quality / (frame_num - i_frame_num),
+    #            'cur_avg_i_frame_bpp': cur_all_i_frame_bpp / i_frame_num, 'cur_avg_p_frame_bpp': cur_all_p_frame_bpp / (frame_num - i_frame_num), 'frame_num': frame_num}
     
-    with open(task_config['save_path'], 'w') as f:
-        json.dump(results, f, indent=2)
+    # with open(task_config['save_path'], 'w') as f:
+    #     json.dump(results, f, indent=2)
     
 
 

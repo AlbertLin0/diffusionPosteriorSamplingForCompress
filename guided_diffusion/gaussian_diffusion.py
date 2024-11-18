@@ -174,8 +174,7 @@ class GaussianDiffusion:
                       measurement_cond_fn,
                       record,
                       save_root,
-                      frame_idx,
-                      ref_frame):
+                      ):
         """
         The function used for sampling from noise.
         """ 
@@ -198,8 +197,7 @@ class GaussianDiffusion:
                                       noisy_measurement=noisy_measurement,
                                       x_prev=img,
                                       x_0_hat=out['pred_xstart'],
-                                      frame_idx=frame_idx,
-                                      ref_frame=ref_frame)
+                                      )
             img = img.detach_()
            
             pbar.set_postfix({'distance': distance.item()}, refresh=False)

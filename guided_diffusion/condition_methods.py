@@ -30,7 +30,6 @@ class ConditioningMethod(ABC):
             difference = measurement - self.operator.forward(data=x_0_hat, **kwargs)
             norm = torch.linalg.norm(difference)
             norm_grad = torch.autograd.grad(outputs=norm, inputs=x_prev)[0]
-            print(torch.sum(torch.abs(norm) ))
         
         elif self.noiser.__name__ == 'poisson':
             Ax = self.operator.forward(x_0_hat, **kwargs)

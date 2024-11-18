@@ -5,7 +5,7 @@ conditioning:
 
 data:
   name: ffhq
-  root: ./data/samples/
+  root: ./data/test1/
 
 measurement:
   operator:
