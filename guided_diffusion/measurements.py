@@ -257,7 +257,7 @@ class CodecOperator(NonLinearOperator):
         print("load gg18 q: {}".format(q))
         
     def forward(self, data, **kwargs):
-        out = self.codec((data + 1.0) / 2.0)
+        out = self.codec.forward((data + 1.0) / 2.0)
         return (out["x_hat"] * 2.0) - 1.0     
      
     def getBpp(self, data, **kwargs):
@@ -270,7 +270,7 @@ from compressai.zoo import bmshj2018_factorized, bmshj2018_hyperprior
 @register_operator(name='gg18_test')
 class CodecOperator(NonLinearOperator):
     def __init__(self, q, device):
-        self.codec = bmshj2018_factorized(quality=3, metric='mse', pretrained=True, progress=True)
+        self.codec = bmshj2018_factorized(quality=q, metric='mse', pretrained=True, progress=True)
         self.codec = self.codec.cuda()
         self.codec.eval()
         print("load gg18 q: {}".format(q))
@@ -278,6 +278,7 @@ class CodecOperator(NonLinearOperator):
     def forward(self, data, **kwargs):
         out = self.codec.forward((data + 1.0) / 2.0)
         return (out["x_hat"]*2.0) - 1.0
+    
     def getBpp(self, data, **kwargs):
         out = self.codec.compress((data + 1.0) / 2.0)
         byte_len = len(out['strings'][0][0])
@@ -292,7 +293,7 @@ class CodecOperator(NonLinearOperator):
         print("load gg18 q: {}".format(q))
         
     def forward(self, data, **kwargs):
-        out = self.codec((data + 1.0) / 2.0)
+        out = self.codec.forward((data + 1.0) / 2.0)
         return (out["x_hat"]*2.0) - 1.0
     
     def getBpp(self, data, **kwargs):

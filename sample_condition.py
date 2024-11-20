@@ -77,7 +77,7 @@ def main():
     sampler = create_sampler(**diffusion_config, model=model) 
     sample_fn = partial(sampler.p_sample_loop, model=model, measurement_cond_fn=measurement_cond_fn)
     # Working directory
-    out_path = os.path.join(args.save_dir, measure_config['operator']['name'] + "_ddim_test2_scale" + str(task_config['conditioning']['params']['scale']) + "_step" + str(diffusion_config['timestep_respacing']) + "_x0" + str(task_config['conditioning']['params']['noise_step']))
+    out_path = os.path.join(args.save_dir, measure_config['operator']['name'] + "_hypergg18")
     os.makedirs(out_path, exist_ok=True)
     for img_dir in ['input', 'recon', 'progress', 'label']:
         os.makedirs(os.path.join(out_path, img_dir), exist_ok=True)
@@ -108,13 +108,10 @@ def main():
         # print(np.sum(clear_color(img_mohu) - clear_color(y)))
         # print(torch.mean(img_mohu))
         xt = torch.randn_like(ref_img, device = device)
-        # xt = sampler.q_sample_loop(img_mohu)
-        # print(torch.mean(xt))
-        # print(torch.var(xt))
         sample = sampler.p_sample_loop(xt, y, measurement_cond_fn=measurement_cond_fn,truth=ref_img)
         
-        file_path_label = os.path.join("./results/elic_vtest/", f"input/test{str(i).zfill(4)}.png")
-        file_path = os.path.join("./results/elic_vtest/", f"recon/test28_{str(i).zfill(4)}.png")
+        file_path_label = os.path.join("./results/gg18_zoo_hypergg18/", f"input/test{str(i).zfill(4)}.png")
+        file_path = os.path.join("./results/gg18_zoo_hypergg18/", f"recon/test{str(i).zfill(4)}.png")
         plt.imsave(file_path, clear_color(sample))
         # print(np.sum(clear_color(img_mohu) - clear_color(y)))
         plt.imsave(file_path_label, clear_color(y))

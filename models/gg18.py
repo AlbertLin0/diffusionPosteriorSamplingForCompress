@@ -43,6 +43,8 @@ class ste_round(torch.autograd.Function):
             return torch.round(x)
         elif mode == "same":
             return x
+        elif mode == "round":
+            return torch.round(x) + torch.nn.init.uniform_(torch.zeros_like(x), -0.5, 0.5)
 
     @staticmethod
     def backward(ctx, x_hat_grad):
@@ -74,24 +76,24 @@ class ScaleHyperpriorSTE(ScaleHyperprior):
     def quantize(self, inputs, mode):
         return ste_round.apply(inputs)
 
-    # def forward(self, x, mode="all"):
-    #     y = self.g_a(x)
-    #     z = self.h_a(torch.abs(y))
-    #     # y_hat = self.quantize(y, "round")
-    #     y_hat = y
-    #     if mode == "enc":
-    #         return { 
-    #             "y_hat": y_hat
-    #         }
-    #     z_hat = self.quantize(z, "round")
-    #     # z_likelihoods = self.entropy_bottleneck(z)
-    #     scales_hat = self.h_s(z_hat)
-    #     # y_likelihoods = self.gaussian_conditional(y_hat, scales_hat, None)
-    #     x_hat = self.g_s(y_hat)
-    #     return {
-    #         "x_bar": x_hat,}
-    #     #     "likelihoods": {"y": y_likelihoods, "z": z_likelihoods},
-    #     # }
+    def forward(self, x, mode="all"):
+        y = self.g_a(x)
+        z = self.h_a(torch.abs(y))
+        y_hat = self.quantize(y, "origin")
+        y_hat = y
+        if mode == "enc":
+            return { 
+                "y_hat": y_hat
+            }
+        z_hat = self.quantize(z, "round")
+        z_likelihoods = self.entropy_bottleneck(z)
+        scales_hat = self.h_s(z_hat)
+        y_likelihoods = self.gaussian_conditional(y_hat, scales_hat, None)
+        x_hat = self.g_s(y_hat)
+        return {
+            "x_hat": x_hat,}
+        #     "likelihoods": {"y": y_likelihoods, "z": z_likelihoods},
+        # }
     def load_state_dict_gg18(self, sd):
         sdkeys = list(sd.keys())
         for key in sdkeys:

@@ -270,7 +270,7 @@ class GaussianDiffusion:
             
             # Give condition.
             # noisy_measurement = self.q_sample(measurement, t=time)
-            imgTmp = out["sample"].clone().detach_()
+
             # TODO: how can we handle argument for different condition method?
             if idx >= 0:
                 img, distance = measurement_cond_fn(
@@ -285,27 +285,14 @@ class GaussianDiffusion:
                                         sqrt_recip_alphas_cumprod = self.sqrt_recip_alphas_cumprod,
                                         one_minus_alphas_cumprod = 1.0 - self.alphas_cumprod
                                         )
-                # img[:,:,:,::2] = imgTmp[:,:,:,::2]
-                # img += out["noise_coef"] * torch.randn_like(img)
                 img = img.detach_()
-            # elif idx >= 0:
-            #     img, distance = measurement_cond_fn(x_t=out['sample'],
-            #                             measurement=measurement,
-            #                             x_prev=img,
-            #                             x_0_hat=out['pred_xstart'],
-            #                                 )
-            #     img[:,:,:,::2] = imgTmp[:,:,:,1::2]
-            #     img = img.detach_()
             else:
                 img = out["sample"].detach_()
 
-
-
-            # img = out["sample"].clone().detach()
             pbar.set_postfix({'distance': distance.item()}, refresh=False)
             # if record:
             if idx % 10 == 0:
-                file_path = os.path.join("results/elic_vtest/", f"progress/x_{str(idx).zfill(4)}.png")
+                file_path = os.path.join("results/gg18_zoo_hypergg18/", f"progress/x_{str(idx).zfill(4)}.png")
                 plt.imsave(file_path, clear_color(img))
 
         return img       
