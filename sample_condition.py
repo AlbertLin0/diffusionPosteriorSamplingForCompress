@@ -108,8 +108,9 @@ def main():
         # print(np.sum(clear_color(img_mohu) - clear_color(y)))
         # print(torch.mean(img_mohu))
         xt = torch.randn_like(ref_img, device = device)
-        sample = sampler.p_sample_loop(xt, y, measurement_cond_fn=measurement_cond_fn,truth=ref_img)
-        
+        noise_y = sampler.p_sample_loop(xt, y, measurement_cond_fn=measurement_cond_fn,truth=ref_img)
+        sample = noise_y
+
         file_path_label = os.path.join("./results/gg18_zoo_hypergg18/", f"input/test{str(i).zfill(4)}.png")
         file_path = os.path.join("./results/gg18_zoo_hypergg18/", f"recon/test{str(i).zfill(4)}.png")
         plt.imsave(file_path, clear_color(sample))

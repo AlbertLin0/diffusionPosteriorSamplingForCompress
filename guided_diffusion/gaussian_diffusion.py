@@ -246,7 +246,8 @@ class GaussianDiffusion:
                       x_start,
                       measurement,
                       measurement_cond_fn,
-                      truth):
+                      truth,
+                      y):
                     #   record,
                     #   save_root,
                     #   frame_idx):
@@ -254,7 +255,11 @@ class GaussianDiffusion:
         The function used for sampling from noise.
         """ 
         img = x_start
+        # noise_y is q(x|y)
+        noise_y = torch.randn_like(y, device=x_start.device, requires_grad=True)
         device = x_start.device
+
+        optimizer = torch.optim.Adam(noise_y, lr=0.5, betas=(0.9,0.99), weight_decay=0.0)
 
         pbar = tqdm(list(range(self.num_timesteps))[::-1])
         distance = torch.tensor(999, device = x_start.device)
@@ -266,28 +271,24 @@ class GaussianDiffusion:
                 out = self.p_sample(x=img, t=time, flag=1)
             else:
                 out = self.p_sample(x=img, t=time)
-            # out = self.p_sample(x=img, t=time)
             
             # Give condition.
             # noisy_measurement = self.q_sample(measurement, t=time)
 
             # TODO: how can we handle argument for different condition method?
-            if idx >= 0:
-                img, distance = measurement_cond_fn(
-                                        x_t=out['sample'],
-                                        measurement=measurement,
-                                        x_prev=img,
-                                        x_0_hat=out['pred_xstart'],
-                                        coef2 = self.betas[idx]/(self.sqrt_alphas[idx] * self.sqrt_one_minus_alphas_cumprod[idx]),
-                                        noise_coef = out["noise_coef"],
-                                        true_measurement = truth,
-                                        noise = out["noise"],
-                                        sqrt_recip_alphas_cumprod = self.sqrt_recip_alphas_cumprod,
-                                        one_minus_alphas_cumprod = 1.0 - self.alphas_cumprod
-                                        )
-                img = img.detach_()
-            else:
-                img = out["sample"].detach_()
+            img, distance = measurement_cond_fn(
+                                    x_t=out['sample'],
+                                    measurement=measurement,
+                                    x_prev=img,
+                                    x_0_hat=out['pred_xstart'],
+                                    coef2 = self.betas[idx]/(self.sqrt_alphas[idx] * self.sqrt_one_minus_alphas_cumprod[idx]),
+                                    noise_coef = out["noise_coef"],
+                                    true_measurement = truth,
+                                    noise = out["noise"],
+                                    sqrt_recip_alphas_cumprod = self.sqrt_recip_alphas_cumprod,
+                                    one_minus_alphas_cumprod = 1.0 - self.alphas_cumprod
+                                    )
+            img = img.detach_()
 
             pbar.set_postfix({'distance': distance.item()}, refresh=False)
             # if record:
@@ -295,7 +296,18 @@ class GaussianDiffusion:
                 file_path = os.path.join("results/gg18_zoo_hypergg18/", f"progress/x_{str(idx).zfill(4)}.png")
                 plt.imsave(file_path, clear_color(img))
 
-        return img       
+            # noiseless
+            xt_truth = self.q_sample(img, idx)
+            norm_noiseless = torch.linalg.norm(img - xt_truth)
+            norm_absless = torch.linalg.norm(noise_y - y)
+            c1 = 1.0
+            c2 = 1.0
+            loss = norm_absless + norm_absless
+            optimizer.zero_grad()
+            loss.backward()
+            optimizer.step()
+
+        return noise_y       
         
     def p_sample(self, model, x, t):
         raise NotImplementedError
