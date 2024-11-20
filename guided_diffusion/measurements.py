@@ -279,10 +279,21 @@ class CodecOperator(NonLinearOperator):
         out = self.codec.forward((data + 1.0) / 2.0)
         return (out["x_hat"]*2.0) - 1.0
     
+    def encode(self, data, **kwargs):
+        y_hat = self.codec.encode((data+ 1.0) / 2.0)
+        return y_hat
+    
+    def decode(self, y_hat, **kwargs):
+        return self.codec.decode(y_hat)        
+
     def getBpp(self, data, **kwargs):
         out = self.codec.compress((data + 1.0) / 2.0)
         byte_len = len(out['strings'][0][0])
         return byte_len * 8 /(256*256*3)
+
+    def y_hat_bpp(self, data):
+        return self.codec.y_hat_bpp(data)
+    
     
 @register_operator(name='gg18_zoo')
 class CodecOperator(NonLinearOperator):

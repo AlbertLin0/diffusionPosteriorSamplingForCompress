@@ -73,7 +73,7 @@ class ScaleHyperpriorSTE(ScaleHyperprior):
         # self.entropy_bottleneck = EntropyBottleneckNoQuant(N)
         # self.gaussian_conditional = GaussianConditionalNoQuant(None)
 
-    def quantize(self, inputs, mode):
+    def quantize(self, inputs):
         return ste_round.apply(inputs)
 
     def forward(self, x, mode="all"):
