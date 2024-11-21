@@ -260,7 +260,8 @@ class GaussianDiffusion:
                       measurement,
                       measurement_cond_fn,
                       truth,
-                      y):
+                      y,
+                      operator):
                     #   record,
                     #   save_root,
                     #   frame_idx):
@@ -270,7 +271,6 @@ class GaussianDiffusion:
         img = x_start
         # noise_y is q(x|y)
         noise_y = torch.randn_like(y, device=x_start.device, requires_grad=True)
-        print(noise_y.shape)
         device = x_start.device
 
         optimizer = torch.optim.Adam([noise_y], lr=0.5, betas=(0.9,0.99), weight_decay=0.0)
@@ -315,13 +315,15 @@ class GaussianDiffusion:
             norm_noiseless = torch.linalg.norm(img - xt_truth)
             # norm_absless = len(self.entropybottleneck.compress(noise_y)[0])
             # norm_absless = torch.tensor(norm_absless)
-            norm_absless = torch.linalg.norm(self.quantize(noise_y) - y.detach_())
+            # norm_absless = torch.linalg.norm(self.quantize(noise_y) - y.detach_())
+            norm_absless = operator.y_hat_bpp(noise_y)
             c1 = 1.0
             c2 = 1.0
             loss = norm_absless + norm_noiseless
             optimizer.zero_grad()
             loss.backward()
             optimizer.step()
+
 
         return self.quantize2(noise_y)       
     
