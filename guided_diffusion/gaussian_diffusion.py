@@ -318,7 +318,7 @@ class GaussianDiffusion:
             norm_absless = torch.linalg.norm(self.quantize(noise_y) - y.detach_())
             c1 = 1.0
             c2 = 1.0
-            loss = norm_absless + 10*norm_noiseless
+            loss = norm_absless + norm_noiseless
             optimizer.zero_grad()
             loss.backward()
             optimizer.step()
