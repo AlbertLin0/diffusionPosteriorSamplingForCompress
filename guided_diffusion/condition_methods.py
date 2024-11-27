@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 import torch
 import matplotlib.pyplot as plt
-from util.img_utils import clear_color
+# from util.img_utils import clear_color
 import os
 import numpy as np
 __CONDITIONING_METHOD__ = {}
@@ -31,28 +31,36 @@ class ConditioningMethod(ABC):
     
     def grad_and_value(self, x_prev, x_0_hat, measurement, **kwargs):
         if self.noiser.__name__ == 'gaussian':
-            # difference_truth = kwargs['true_measurement'] - x_0_hat
-            if self.i < 0:
-                difference = kwargs['true_measurement'] - x_0_hat
-            else:
-                difference = measurement - self.operator.forward(data=x_0_hat, **kwargs)
-                # difference = measurement - x_0_hat
+            
+            if kwargs['flag'] == 'DPS':
+                if self.i < 0:
+                    difference = kwargs['true_measurement'] - x_0_hat
+                else:
+                    difference = self.operator.decode(measurement) - self.operator.forward(data=x_0_hat, **kwargs)
+                norm = torch.linalg.norm(difference)
+                norm_grad = torch.autograd.grad(outputs=norm, inputs=x_prev, retain_graph=True, allow_unused=True)[0]
+                return norm_grad, norm
+            else: 
 
-            norm = torch.linalg.norm(difference)
-            norm_grad = torch.autograd.grad(outputs=norm, inputs=x_prev)[0]
-            # norm_constant_c = (norm / x_0_hat - kwargs["sqrt_recip_alphas_cumprod"][self.i]) / kwargs["one_minus_alphas_cumprod"][self.i] * kwargs["sqrt_recip_alphas_cumprod"][self.i]            
+                if self.i < 0:
+                    difference = kwargs['true_measurement'] - x_0_hat
+                else:
+                    difference = self.operator.decode(measurement) - self.operator.forward(data=x_0_hat, **kwargs)
+                    # difference = self.operator.forward(data=x_0_hat, **kwargs)
 
-        elif self.noiser.__name__ == 'poisson':
-            Ax = self.operator.forward(x_0_hat, **kwargs)
-            difference = measurement-Ax
-            norm = torch.linalg.norm(difference) / measurement.abs()
-            norm = norm.mean()
-            norm_grad = torch.autograd.grad(outputs=norm, inputs=x_prev)[0]
-
-        else:
-            raise NotImplementedError
+                norm = torch.linalg.norm(difference)
+                # x_prev.grad.zeros()
+                norm.backward()
+                x_prev_grad = x_prev.grad.detach_()
+                measurement.grad.zero_()
+                # norm_grad = torch.autograd.grad(outputs=norm, inputs=x_prev, retain_graph=True, allow_unused=True)[0]
+                tmp = x_prev - kwargs['xt_truth']
+                # ||x_(t-1) - x_(t-1)^new - \delta f(x_(t-1),y)||_2 
+                norm_y = torch.linalg.norm(tmp - x_prev.grad)
+                norm_y.backward()
+                y_grad = measurement.grad # * (tmp - x_prev.grad) / norm_y              
              
-        return norm_grad, norm
+                return x_prev_grad, norm, y_grad
    
     @abstractmethod
     def conditioning(self, x_t, measurement, noisy_measurement=None, **kwargs):
@@ -94,18 +102,26 @@ class PosteriorSampling(ConditioningMethod):
         self.coef = torch.linspace(10, 100, 1000)
 
     def conditioning(self, x_prev, x_t, x_0_hat, measurement, **kwargs):
-        norm_grad, norm = self.grad_and_value(x_prev=x_prev, x_0_hat=x_0_hat, measurement=measurement, **kwargs)
-        # norm_grad = torch.clamp(norm_grad, -kwargs["coef2"], kwargs["coef2"])
-        """kwargs["coef2"] 是第self.i次去噪的噪声系数, 后一项为调整系数"""
+        if kwargs['flag'] == 'forward':
+            x_prev_grad, norm, y_grad = self.grad_and_value(x_prev=x_prev, x_0_hat=x_0_hat, measurement=measurement, **kwargs)
+            # norm_grad = torch.clamp(norm_grad, -kwargs["coef2"], kwargs["coef2"])
+            """kwargs["coef2"] 是第self.i次去噪的噪声系数, 后一项为调整系数"""
 
-        # x_t -= norm_grad * 1.0 # kwargs["coef2"] * self.coef[self.i]
-        """ODE的情况下，不增加噪声导致生成图片含有大量高斯噪声"""
+            # x_t -= norm_grad * 1.0 # kwargs["coef2"] * self.coef[self.i]
+            """ODE的情况下，不增加噪声导致生成图片含有大量高斯噪声"""
 
-        # tmp = torch.randn_like(x_t) #* kwargs['noise_coef'] #- norm_grad * 0.6# kwargs["coef2"] * self.coef[self.i]
-        # if self.i <= 100:
-        x_t -= norm_grad * 0.6
-        self.i -= 1
-        return x_t, norm
+            # tmp = torch.randn_like(x_t) #* kwargs['noise_coef'] #- norm_grad * 0.6# kwargs["coef2"] * self.coef[self.i]
+            # if self.i <= 100:
+            x_t -= x_prev_grad * 0.6
+        
+            measurement = measurement - (y_grad / self.i)
+            self.i -= 1
+            return x_t, norm, measurement
+        else: 
+            x_prev_grad, norm = self.grad_and_value(x_prev=x_prev, x_0_hat=x_0_hat, measurement=measurement, **kwargs)
+            x_t -= x_prev_grad * 0.6
+            self.i -= 1
+            return x_t, norm
         
 @register_conditioning_method(name='ps+')
 class PosteriorSamplingPlus(ConditioningMethod):

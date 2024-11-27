@@ -109,7 +109,7 @@ def main():
         # print(np.sum(clear_color(img_mohu) - clear_co6lor(y)))
         # print(torch.mean(img_mohu))
         xt = torch.randn_like(ref_img, device = device)
-        noise_y = sampler.p_sample_loop(xt, measurement=y, measurement_cond_fn=measurement_cond_fn,truth=ref_img, y=y_hat)
+        noise_y = sampler.p_sample_loop(xt, measurement=y, measurement_cond_fn=measurement_cond_fn,truth=ref_img, y=y_hat, operator=operator)
         xt = torch.randn_like(ref_img, device = device)
         print(noise_y.shape)
         print(operator.y_hat_bpp(noise_y))

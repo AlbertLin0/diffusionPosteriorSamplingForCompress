@@ -270,17 +270,18 @@ class GaussianDiffusion:
         """ 
         img = x_start
         # noise_y is q(x|y)
-        noise_y = torch.randn_like(y, device=x_start.device, requires_grad=True)
+        noise_y = torch.tensor(y, device=x_start.device, requires_grad=True)
         device = x_start.device
 
-        optimizer = torch.optim.Adam([noise_y], lr=0.5, betas=(0.9,0.99), weight_decay=0.0)
+        # optimizer = torch.optim.Adam([noise_y], lr=0.5, betas=(0.9,0.99), weight_decay=0.0)
 
         pbar = tqdm(list(range(self.num_timesteps))[::-1])
         distance = torch.tensor(999, device = x_start.device)
         for idx in pbar:
             time = torch.tensor([idx] * img.shape[0], device=device)
-
+      
             img = img.requires_grad_()
+            noise_y = noise_y.requires_grad_()
             if idx < 0:
                 out = self.p_sample(x=img, t=time, flag=1)
             else:
@@ -288,11 +289,11 @@ class GaussianDiffusion:
             
             # Give condition.
             # noisy_measurement = self.q_sample(measurement, t=time)
-
+            xt_truth = self.q_sample(truth, idx)
             # TODO: how can we handle argument for different condition method?
-            img, distance = measurement_cond_fn(
+            img, distance, noise_y = measurement_cond_fn(
                                     x_t=out['sample'],
-                                    measurement=measurement,
+                                    measurement=noise_y,
                                     x_prev=img,
                                     x_0_hat=out['pred_xstart'],
                                     coef2 = self.betas[idx]/(self.sqrt_alphas[idx] * self.sqrt_one_minus_alphas_cumprod[idx]),
@@ -300,9 +301,11 @@ class GaussianDiffusion:
                                     true_measurement = truth,
                                     noise = out["noise"],
                                     sqrt_recip_alphas_cumprod = self.sqrt_recip_alphas_cumprod,
-                                    one_minus_alphas_cumprod = 1.0 - self.alphas_cumprod
+                                    one_minus_alphas_cumprod = 1.0 - self.alphas_cumprod,
+                                    xt_truth = xt_truth,
+                                    flag = 'forward'
                                     )
-            img = img.detach_()
+            
 
             pbar.set_postfix({'distance': distance.item()}, refresh=False)
             # if record:
@@ -311,18 +314,23 @@ class GaussianDiffusion:
                 plt.imsave(file_path, clear_color(img))
 
             # noiseless + absless
-            xt_truth = self.q_sample(truth, idx)
-            norm_noiseless = torch.linalg.norm(img - xt_truth)
-            # norm_absless = len(self.entropybottleneck.compress(noise_y)[0])
-            # norm_absless = torch.tensor(norm_absless)
-            # norm_absless = torch.linalg.norm(self.quantize(noise_y) - y.detach_())
-            norm_absless = operator.y_hat_bpp(noise_y)
-            c1 = 1.0
-            c2 = 1.0
-            loss = norm_absless + norm_noiseless
-            optimizer.zero_grad()
-            loss.backward()
-            optimizer.step()
+            # norm_noiseless = torch.linalg.norm(img - xt_truth)
+            # # norm_absless = len(self.entropybottleneck.compress(noise_y)[0])
+            # # norm_absless = torch.tensor(norm_absless)
+            # # norm_absless = torch.linalg.norm(self.quantize(noise_y) - y.detach_())
+            # # norm_absless = operator.y_hat_bpp(noise_y)
+            # c1 = 1.0
+            # c2 = 1.0
+            # loss = norm_noiseless# + norm_absless
+            # norm = torch.linalg.norm(loss)
+            # norm_grad = torch.autograd.grad(outputs=norm_noiseless, inputs=noise_y,allow_unused=True)[0]
+            # # optimizer.zero_grad()
+            # # loss.backward()
+            # # optimizer.step()
+            # noise_y -= norm_grad 
+            # noise_y.zero_grad()
+            img = img.detach_()
+            noise_y = noise_y.detach_()
 
 
         return self.quantize2(noise_y)       
@@ -372,7 +380,8 @@ class GaussianDiffusion:
                                     true_measurement = truth,
                                     noise = out["noise"],
                                     sqrt_recip_alphas_cumprod = self.sqrt_recip_alphas_cumprod,
-                                    one_minus_alphas_cumprod = 1.0 - self.alphas_cumprod
+                                    one_minus_alphas_cumprod = 1.0 - self.alphas_cumprod,
+                                    flag = 'DPS'
                                     )
             img = img.detach_()
 
