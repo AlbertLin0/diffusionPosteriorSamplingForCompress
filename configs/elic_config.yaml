@@ -10,7 +10,7 @@ data:
 
 measurement:
   operator:
-    name: gg18_test
+    name: gg18_zoo
     q: 2
 
   noise: 

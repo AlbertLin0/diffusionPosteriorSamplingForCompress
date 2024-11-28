@@ -376,9 +376,7 @@ class GaussianDiffusion:
                                     x_prev=img,
                                     x_0_hat=out['pred_xstart'],
                                     coef2 = self.betas[idx]/(self.sqrt_alphas[idx] * self.sqrt_one_minus_alphas_cumprod[idx]),
-                                    noise_coef = out["noise_coef"],
                                     true_measurement = truth,
-                                    noise = out["noise"],
                                     sqrt_recip_alphas_cumprod = self.sqrt_recip_alphas_cumprod,
                                     one_minus_alphas_cumprod = 1.0 - self.alphas_cumprod,
                                     flag = 'DPS'

@@ -36,9 +36,10 @@ class ConditioningMethod(ABC):
                 if self.i < 0:
                     difference = kwargs['true_measurement'] - x_0_hat
                 else:
-                    difference = self.operator.decode(measurement) - self.operator.forward(data=x_0_hat, **kwargs)
+                    difference = measurement - self.operator.forward(data=x_0_hat, **kwargs)
+                    # difference = self.operator.decode(measurement) - self.operator.forward(data=x_0_hat, **kwargs)
                 norm = torch.linalg.norm(difference)
-                norm_grad = torch.autograd.grad(outputs=norm, inputs=x_prev, retain_graph=True, allow_unused=True)[0]
+                norm_grad = torch.autograd.grad(outputs=norm, inputs=x_prev)[0]
                 return norm_grad, norm
             else: 
 
