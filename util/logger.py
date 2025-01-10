@@ -1,7 +1,7 @@
 import logging
 
 def get_logger():
-    logger = logging.getLogger(name='DPS for DCVC')
+    logger = logging.getLogger(name='image compress basd diffusion with DPS')
     logger.setLevel(logging.INFO)
     
     formatter = logging.Formatter("%(asctime)s [%(name)s] >> %(message)s")

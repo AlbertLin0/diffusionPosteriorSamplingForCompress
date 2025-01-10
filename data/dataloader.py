@@ -49,18 +49,30 @@ class FFHQDataset(VisionDataset):
     def __getitem__(self, index: int):
         fpath = self.fpaths[index]
         img = Image.open(fpath).convert('RGB')
-
-        # 修改
-        # img = np.asarray(img).astype('float64').transpose(2, 0, 1)
-        # img = torch.from_numpy(img).type(torch.FloatTensor)
-        # img = img/255
-
-
         if self.transforms is not None:
             img = self.transforms(img)
         
         return img
     
+@register_dataset(name='imagenet256')
+class FFHQDataset(VisionDataset):
+    def __init__(self, root: str, transforms: Optional[Callable]=None):
+        super().__init__(root, transforms)
+
+        self.fpaths = sorted(glob(root + '/**/*.JPEG', recursive=True))
+    
+        assert len(self.fpaths) > 0, "File list is empty. Check the root."
+
+    def __len__(self):
+        return len(self.fpaths)
+
+    def __getitem__(self, index: int):
+        fpath = self.fpaths[index]
+        img = Image.open(fpath).convert('RGB')
+        if self.transforms is not None:
+            img = self.transforms(img)
+        
+        return img
 
 @register_dataset(name='cipr')
 class FFHQDataset(VisionDataset):
@@ -76,13 +88,6 @@ class FFHQDataset(VisionDataset):
     def __getitem__(self, index: int):
         fpath = self.fpaths[index]
         img = Image.open(fpath).convert('RGB')
-
-        # 修改
-        # img = np.asarray(img).astype('float64').transpose(2, 0, 1)
-        # img = torch.from_numpy(img).type(torch.FloatTensor)
-        # img = img/255
-
-
 
         if self.transforms is not None:
             img = self.transforms(img)

@@ -13,7 +13,7 @@ from guided_diffusion.measurements import get_noise, get_operator
 from guided_diffusion.unet import create_model
 from guided_diffusion.gaussian_diffusion import create_sampler
 from data.dataloader import get_dataset, get_dataloader
-from util.img_utils import clear_color, mask_generator
+from util.img_utils import clear_color
 from util.logger import get_logger
 
 
@@ -88,12 +88,7 @@ def main():
     dataset = get_dataset(**data_config, transforms=transform)
     loader = get_dataloader(dataset, batch_size=1, num_workers=0, train=False)
 
-    # Exception) In case of inpainting, we need to generate a mask 
-    if measure_config['operator']['name'] == 'inpainting':
-        mask_gen = mask_generator(
-           **measure_config['mask_opt']
-        )
-    psnr_sum = []
+    psnr_list = []
     bpp_list = []
     # Do Inference
     for i, ref_img in enumerate(loader):
@@ -101,36 +96,21 @@ def main():
         fname = str(i).zfill(5) + '.png'
         ref_img = ref_img.to(device)
        
-        # exit 
-        if i == 250: 
-            exit(0)
+        # Forward measurement model (Ax + n)
+        y = operator.forward(data=ref_img, flag=1)
+        plt.imsave(os.path.join(out_path, 'input', fname), clear_color(y))
+        y_n = noiser(y)
 
-        # Exception) In case of inpainging,
-        if measure_config['operator'] ['name'] == 'inpainting':
-            mask = mask_gen(ref_img)
-            mask = mask[:, 0, :, :].unsqueeze(dim=0)
-            measurement_cond_fn = partial(cond_method.conditioning, mask=mask)
-            sample_fn = partial(sample_fn, measurement_cond_fn=measurement_cond_fn)
-
-            # Forward measurement model (Ax + n)
-            y = operator.forward(ref_img, mask=mask)
-            y_n = noiser(y)
-
-        else: 
-            # Forward measurement model (Ax + n)
-            y = operator.forward(data=ref_img, flag=1)
-            psnr_sum.append(PSNR(clear_color(ref_img), clear_color(y)))
-            plt.imsave(os.path.join(out_path, 'input', fname), clear_color(y))
-            bpp = operator.getBpp(data=ref_img)
-            bpp_list.append(bpp)
+        # psnr & bpp
+        psnr_list.append(PSNR(clear_color(ref_img), clear_color(y)))
+        bpp = operator.getBpp(data=ref_img)
+        bpp_list.append(bpp)
+        print(psnr_list[i], bpp_list[i])
         
         # Sampling
         x_start = torch.randn(ref_img.shape, device=device).requires_grad_()
         sample = sample_fn(x_start=x_start, measurement=y_n, record=True, save_root=out_path)
-        # ref_frame = ref_img
-        # psnr_sum.append(PSNR(clear_color(ref_img), clear_color(sample)))
 
-        plt.imsave(os.path.join(out_path, 'input', fname), clear_color(y_n))
         plt.imsave(os.path.join(out_path, 'label', fname), clear_color(ref_img))
         plt.imsave(os.path.join(out_path, 'recon', fname), clear_color(sample))
 

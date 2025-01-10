@@ -4,13 +4,13 @@ conditioning:
     scale: 0.8
 
 data:
-  name: ffhq
-  root: ./data/foreman_cif/
+  name: imagenet256
+  root: ./data/imagenet256/
 
 measurement:
   operator:
-    name: DCVC
-    q: 2
+    name: elic
+    q: 3
 
   noise: 
     name: gaussian
