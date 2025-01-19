@@ -10,7 +10,7 @@ data:
 measurement:
   operator:
     name: elic
-    q: 3
+    q: 2
 
   noise: 
     name: gaussian

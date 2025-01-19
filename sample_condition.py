@@ -58,28 +58,12 @@ def main():
     model = model.to(device)
     model.eval()
 
-    # Prepare Operator and noise
-    measure_config = task_config['measurement']
-    operator = get_operator(device=device, **measure_config['operator'])
-    noiser = get_noise(**measure_config['noise'])
-    logger.info(f"Operation: {measure_config['operator']['name']} / Noise: {measure_config['noise']['name']}")
 
-    # Prepare conditioning method
-    cond_config = task_config['conditioning']
-    cond_method = get_conditioning_method(cond_config['method'], operator, noiser, **cond_config['params'])
-    measurement_cond_fn = cond_method.conditioning
-    logger.info(f"Conditioning method : {task_config['conditioning']['method']}")
-   
     # Load diffusion sampler
+    # sampler = create_sampler(**diffusion_config) 
+    # sample_fn = partial(sampler.p_sample_loop, model=model, measurement_cond_fn=measurement_cond_fn)
     sampler = create_sampler(**diffusion_config) 
-    sample_fn = partial(sampler.p_sample_loop, model=model, measurement_cond_fn=measurement_cond_fn)
-   
-    # Working directory
-    out_path = os.path.join(args.save_dir, measure_config['operator']['name']+"_section2")
-    os.makedirs(out_path, exist_ok=True)
-    for img_dir in ['input', 'recon', 'progress', 'label']:
-        os.makedirs(os.path.join(out_path, img_dir), exist_ok=True)
-
+    sample_fn = partial(sampler.p_sample_loop, model=model)
     # Prepare dataloader
     data_config = task_config['data']
     transform = transforms.Compose([transforms.ToTensor(),
@@ -88,31 +72,55 @@ def main():
     dataset = get_dataset(**data_config, transforms=transform)
     loader = get_dataloader(dataset, batch_size=1, num_workers=0, train=False)
 
-    psnr_list = []
-    bpp_list = []
-    # Do Inference
-    for i, ref_img in enumerate(loader):
-        logger.info(f"Inference for image {i}")
-        fname = str(i).zfill(5) + '.png'
-        ref_img = ref_img.to(device)
-       
-        # Forward measurement model (Ax + n)
-        y = operator.forward(data=ref_img, flag=1)
-        plt.imsave(os.path.join(out_path, 'input', fname), clear_color(y))
-        y_n = noiser(y)
-
-        # psnr & bpp
-        psnr_list.append(PSNR(clear_color(ref_img), clear_color(y)))
-        bpp = operator.getBpp(data=ref_img)
-        bpp_list.append(bpp)
-        print(psnr_list[i], bpp_list[i])
+    for j in range(1,5,1):
+        psnr_list = []
+        psnr_recon_list = []
+        bpp_list = []
+        # Prepare Operator and noise
+        measure_config = task_config['measurement']
+        measure_config['operator']['q'] = j
+        operator = get_operator(device=device, **measure_config['operator'])
+        noiser = get_noise(**measure_config['noise'])
+        logger.info(f"Operation: {measure_config['operator']['name']} / Noise: {measure_config['noise']['name']}")
+        # Prepare conditioning method
+        cond_config = task_config['conditioning']
+        cond_method = get_conditioning_method(cond_config['method'], operator, noiser, **cond_config['params'])
+        measurement_cond_fn = cond_method.conditioning
+        logger.info(f"Conditioning method : {task_config['conditioning']['method']}")
+        # Working directory
+        out_path = os.path.join(args.save_dir, measure_config['operator']['name']+"_section2_q"+str(j))
+        os.makedirs(out_path, exist_ok=True)
+        for img_dir in ['input', 'recon', 'progress', 'label']:
+            os.makedirs(os.path.join(out_path, img_dir), exist_ok=True)
+        # Do Inference
+        for i, ref_img in enumerate(loader):
+            logger.info(f"Inference for image {i}")
+            fname = str(i).zfill(5) + '.png'
+            ref_img = ref_img.to(device)
         
-        # Sampling
-        x_start = torch.randn(ref_img.shape, device=device).requires_grad_()
-        sample = sample_fn(x_start=x_start, measurement=y_n, record=True, save_root=out_path)
+            # Forward measurement model (Ax + n)
+            y = operator.forward(data=ref_img,  flag=1)
+            plt.imsave(os.path.join(out_path, 'input', fname), clear_color(y))
+            y_n = noiser(y)
 
-        plt.imsave(os.path.join(out_path, 'label', fname), clear_color(ref_img))
-        plt.imsave(os.path.join(out_path, 'recon', fname), clear_color(sample))
+            # psnr & bpp
+            psnr_list.append(PSNR(clear_color(ref_img), clear_color(y)))
+            bpp = operator.getBpp(data=ref_img)
+            bpp_list.append(bpp)
+            print(psnr_list[i], bpp_list[i])
+            
+            # Sampling
+            x_start = torch.randn(ref_img.shape, device=device).requires_grad_()
+            sample = sample_fn(x_start=x_start, measurement=y_n, record=True, save_root=out_path,
+                               measurement_cond_fn=measurement_cond_fn)
 
+            plt.imsave(os.path.join(out_path, 'label', fname), clear_color(ref_img))
+            plt.imsave(os.path.join(out_path, 'recon', fname), clear_color(sample))
+            psnr_recon_list.append(PSNR(clear_color(ref_img), clear_color(sample)))
+            print(psnr_recon_list[i])
+        with open('psnr_list.json', 'a') as f2: 
+            json.dump(psnr_list, f2)
+        with open('bpp_list.json', 'a') as f1: 
+            json.dump(bpp_list, f1)
 if __name__ == '__main__':
     main()
