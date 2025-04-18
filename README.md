@@ -1,11 +1,11 @@
-# Diffusion Posterior Sampling for General Noisy Inverse Problems (ICLR 2023 spotlight)
+# 基于无条件扩散模型的图像压缩
 
 ![result-gif1](./figures/motion_blur.gif)
 ![result-git2](./figures/super_resolution.gif)
 <!-- See more results in the [project-page](https://jeongsol-kim.github.io/dps-project-page) -->
 
 ## Abstract
-In this work, we extend diffusion solvers to efficiently handle general noisy (non)linear inverse problems via the approximation of the posterior sampling. Interestingly, the resulting posterior sampling scheme is a blended version of the diffusion sampling with the manifold constrained gradient without strict measurement consistency projection step, yielding more desirable generative path in noisy settings compared to the previous studies.
+该工作的前置工作为1. DPS 2. Idempotent and perceptual image compression。我们利用dps的图像逆问题方法，将其与基于深度学习的图像编解码结合，实现了图像压缩功能，主要探讨影响图像重建质量的扩散模型结构，包括量化策略、条件算法系数、跳跃连接等等。另外，由于该方法只将diffusion model应用在解码端，即中间码流的形成，即编码器并没有利用diffusion model，导致重建图像为次优解，我们对这个问题进行了讨论，并打算用变分优化的方法将diffusion mode带入编码端。
 
 ![cover-img](./figures/cover.jpg)
 
